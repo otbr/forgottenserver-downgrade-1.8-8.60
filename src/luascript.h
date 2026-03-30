@@ -40,6 +40,7 @@ enum LuaDataType
 	LuaData_ItemType,
 	LuaData_ModalWindow,
 	LuaData_MonsterType,
+	LuaData_NpcType,
 	LuaData_NetworkMessage,
 	LuaData_Party,
 	LuaData_Vocation,
@@ -92,6 +93,7 @@ class LuaVariant;
 class Monster;
 class MonsterSpell;
 class MonsterType;
+class NpcType;
 class MoveEvent;
 class NetworkMessage;
 class Npc;

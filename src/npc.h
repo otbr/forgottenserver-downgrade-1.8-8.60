@@ -7,84 +7,64 @@
 #include "creature.h"
 #include "luascript.h"
 
+#include <map>
 #include <set>
 
 class Npc;
 class Player;
 
-class Npcs
-{
-public:
-	static void reload();
-};
+struct NpcTypeInfo {
+	LuaScriptInterface* scriptInterface = nullptr;
+	NpcsEvent_t eventType = NPCS_EVENT_NONE;
 
-class NpcScriptInterface final : public LuaScriptInterface
-{
-public:
-	NpcScriptInterface();
-
-	bool loadNpcLib(std::string_view file);
-
-private:
-	void registerFunctions();
-
-	static int luaActionSay(lua_State* L);
-	static int luaActionMove(lua_State* L);
-	static int luaActionMoveTo(lua_State* L);
-	static int luaActionTurn(lua_State* L);
-	static int luaActionFollow(lua_State* L);
-	static int luagetDistanceTo(lua_State* L);
-	static int luaSetNpcFocus(lua_State* L);
-	static int luaGetNpcCid(lua_State* L);
-	static int luaGetNpcParameter(lua_State* L);
-	static int luaOpenShopWindow(lua_State* L);
-	static int luaCloseShopWindow(lua_State* L);
-	static int luaDoSellItem(lua_State* L);
-
-	// metatable
-	static int luaNpcGetParameter(lua_State* L);
-	static int luaNpcSetFocus(lua_State* L);
-
-	static int luaNpcOpenShopWindow(lua_State* L);
-	static int luaNpcCloseShopWindow(lua_State* L);
-
-private:
-	bool initState() override;
-	bool closeState() override;
-
-	bool libLoaded;
-};
-
-class NpcEventsHandler
-{
-public:
-	NpcEventsHandler(const std::string& file, Npc* npc);
-
-	void onCreatureAppear(Creature* creature) const;
-	void onCreatureDisappear(Creature* creature) const;
-	void onCreatureMove(Creature* creature, const Position& oldPos, const Position& newPos) const;
-	void onCreatureSay(Creature* creature, SpeakClasses, std::string_view text) const;
-	void onPlayerTrade(Player* player, int32_t callback, uint16_t itemId, uint8_t count, uint8_t amount,
-	                   bool ignore = false, bool inBackpacks = false) const;
-	void onPlayerCloseChannel(Player* player) const;
-	void onPlayerEndTrade(Player* player) const;
-	void onThink() const;
-
-	bool isLoaded() const;
-
-	std::unique_ptr<NpcScriptInterface> scriptInterface;
-
-private:
-	Npc* npc;
-
+	// Event IDs
+	int32_t thinkEvent = -1;
 	int32_t creatureAppearEvent = -1;
 	int32_t creatureDisappearEvent = -1;
 	int32_t creatureMoveEvent = -1;
 	int32_t creatureSayEvent = -1;
+	int32_t playerBuyEvent = -1;
+	int32_t playerSellEvent = -1;
+	int32_t playerCheckEvent = -1;
 	int32_t playerCloseChannelEvent = -1;
-	int32_t playerEndTradeEvent = -1;
-	int32_t thinkEvent = -1;
-	bool loaded = false;
+
+	// Properties
+	Outfit_t outfit;
+	int32_t health = 100;
+	int32_t healthMax = 100;
+	uint32_t baseSpeed = 100;
+	uint32_t walkInterval = 1500;
+	int32_t walkRadius = 2;
+	uint8_t speechBubble = 0;
+	uint16_t moneyType = 0;
+	bool pushable = true;
+	bool attackable = false;
+	bool floorChange = false;
+	bool ignoreHeight = false;
+
+	// Shop
+	std::vector<ShopInfo> shopItems;
+};
+
+class NpcType {
+public:
+	NpcType() = default;
+	NpcType(const NpcType&) = delete;
+	NpcType& operator=(const NpcType&) = delete;
+
+	bool loadCallback(LuaScriptInterface* scriptInterface);
+
+	std::string name;
+	std::string nameDescription;
+	NpcTypeInfo info;
+};
+
+class Npcs
+{
+public:
+	static void reload();
+	static NpcType* getNpcType(const std::string& name, bool create = false);
+	static std::map<std::string, NpcType> npcTypes;
 };
 
 class Npc final : public Creature
@@ -153,7 +133,19 @@ public:
 
 	const auto& getSpectators() { return spectators; }
 
-	auto& getScriptInterface() { return npcEventHandler->scriptInterface; }
+	// RevScriptSys player interaction tracking
+	void setPlayerInteraction(uint32_t playerId, int32_t topic = 0);
+	bool isInteractingWithPlayer(uint32_t playerId) const;
+	void removePlayerInteraction(uint32_t playerId);
+	bool isMerchant() const { return npcType != nullptr && !npcType->info.shopItems.empty(); }
+
+	// RevScriptSys public accessors
+	NpcType* getNpcType() const { return npcType; }
+	void openShopForPlayer(Player* player) { addShopPlayer(player); }
+	void closeShopForPlayer(Player* player) { removeShopPlayer(player); }
+	LuaScriptInterface* getShopScriptInterface() const {
+		return npcType ? npcType->info.scriptInterface : nullptr;
+	}
 
 	static uint32_t npcAutoID;
 
@@ -180,7 +172,7 @@ private:
 	bool getRandomStep(Direction& direction) const;
 
 	void reset();
-	bool loadFromXml();
+	bool loadFromLuaType();
 
 	void addShopPlayer(Player* player);
 	void removeShopPlayer(Player* player);
@@ -194,7 +186,8 @@ private:
 	std::string name;
 	std::string filename;
 
-	std::unique_ptr<NpcEventsHandler> npcEventHandler;
+	NpcType* npcType = nullptr;
+	std::map<uint32_t, int32_t> playerInteractions;
 
 	Position masterPos;
 
@@ -214,7 +207,6 @@ private:
 	uint16_t moneyType;
 
 	friend class Npcs;
-	friend class NpcScriptInterface;
 };
 
 #endif

@@ -130,5 +130,11 @@ bool ScriptingManager::loadScriptSystems()
 		return false;
 	}
 
+	// NPC RevScriptSys: load npclib and npc scripts
+	if (g_luaEnvironment.loadFile("data/npclib/load.lua") == -1) {
+		LOG_WARN("[Warning - ScriptingManager::loadScriptSystems] Cannot load data/npclib/load.lua");
+	}
+	g_scripts->loadScripts("npc_revscript", false, false);
+
 	return true;
 }

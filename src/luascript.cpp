@@ -2258,6 +2258,17 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(MONSTERS_EVENT_MOVE);
 	registerEnum(MONSTERS_EVENT_SAY);
 
+	registerEnum(NPCS_EVENT_NONE);
+	registerEnum(NPCS_EVENT_THINK);
+	registerEnum(NPCS_EVENT_APPEAR);
+	registerEnum(NPCS_EVENT_DISAPPEAR);
+	registerEnum(NPCS_EVENT_MOVE);
+	registerEnum(NPCS_EVENT_SAY);
+	registerEnum(NPCS_EVENT_PLAYER_BUY);
+	registerEnum(NPCS_EVENT_PLAYER_SELL);
+	registerEnum(NPCS_EVENT_PLAYER_CHECK_ITEM);
+	registerEnum(NPCS_EVENT_PLAYER_CLOSE_CHANNEL);
+
 	registerEnum(DECAYING_FALSE);
 	registerEnum(DECAYING_TRUE);
 	registerEnum(DECAYING_PENDING);

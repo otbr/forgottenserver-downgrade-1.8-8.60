@@ -9,6 +9,7 @@
 #include "luascript.h"
 #include "monster.h"
 #include "monsters.h"
+#include "npc.h"
 #include "script.h"
 #include "scriptmanager.h"
 #include "spells.h"
@@ -623,6 +624,39 @@ int luaGameCreateMonsterType(lua_State* L)
 	return 1;
 }
 
+int luaGameCreateNpcType(lua_State* L)
+{
+	// Game.createNpcType(name)
+	if (LuaScriptInterface::getScriptEnv()->getScriptInterface() != &g_scripts->getScriptInterface()) {
+		reportErrorFunc(L, "NpcTypes can only be registered in the Scripts interface.");
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const std::string& name = getString(L, 1);
+	if (name.empty()) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	NpcType* npcType = Npcs::getNpcType(name, true);
+	// Reset event IDs on (re-)registration
+	npcType->info.thinkEvent = -1;
+	npcType->info.creatureAppearEvent = -1;
+	npcType->info.creatureDisappearEvent = -1;
+	npcType->info.creatureMoveEvent = -1;
+	npcType->info.creatureSayEvent = -1;
+	npcType->info.playerBuyEvent = -1;
+	npcType->info.playerSellEvent = -1;
+	npcType->info.playerCheckEvent = -1;
+	npcType->info.playerCloseChannelEvent = -1;
+	npcType->info.shopItems.clear();
+
+	pushUserdata<NpcType>(L, npcType);
+	setMetatable(L, -1, "NpcType");
+	return 1;
+}
+
 int luaGameStartRaid(lua_State* L)
 {
 	// Game.startRaid(raidName)
@@ -890,6 +924,7 @@ void LuaScriptInterface::registerGame()
 	registerMethod("Game", "createNpc", luaGameCreateNpc);
 	registerMethod("Game", "createTile", luaGameCreateTile);
 	registerMethod("Game", "createMonsterType", luaGameCreateMonsterType);
+	registerMethod("Game", "createNpcType", luaGameCreateNpcType);
 
 	registerMethod("Game", "startRaid", luaGameStartRaid);
 

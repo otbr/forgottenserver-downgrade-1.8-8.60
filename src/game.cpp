@@ -4753,7 +4753,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			// rewardboss player attacking boss
 			if (target && target->getMonster() && target->getMonster()->isRewardBoss()) {
 				uint32_t monsterId = target->getMonster()->getID();
-				if (rewardBossTracking.find(monsterId) == rewardBossTracking.end()) {
+				if (!rewardBossTracking.contains(monsterId)) {
 					rewardBossTracking[monsterId] = RewardBossContributionInfo();
 				}
 				if (attacker && attacker->getPlayer()) {
@@ -4764,7 +4764,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			// rewardboss boss attacking player
 			if (attacker && attacker->getMonster() && attacker->getMonster()->isRewardBoss()) {
 				uint32_t monsterId = attacker->getMonster()->getID();
-				if (rewardBossTracking.find(monsterId) == rewardBossTracking.end()) {
+				if (!rewardBossTracking.contains(monsterId)) {
 					rewardBossTracking[monsterId] = RewardBossContributionInfo();
 				}
 				if (target->getPlayer()) {

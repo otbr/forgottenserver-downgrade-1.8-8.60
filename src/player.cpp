@@ -112,8 +112,7 @@ bool Player::unlockWithToken(const std::string& token)
 	for (char c : token) {
 		hash = ((hash * 31) + static_cast<uint8_t>(c)) % 4294967296;
 	}
-	char hashStr[9];
-	snprintf(hashStr, sizeof(hashStr), "%08x", hash);
+	std::string hashStr = fmt::format("{:08x}", hash);
 	
 	if (tokenHash == hashStr) {
 		tokenLocked = false;
@@ -4258,7 +4257,7 @@ bool Player::hasAttacked(const Player* attacked) const
 		return false;
 	}
 
-	return attackedSet.find(attacked->guid) != attackedSet.end();
+	return attackedSet.contains(attacked->guid);
 }
 
 void Player::addAttacked(const Player* attacked)
@@ -4699,7 +4698,7 @@ bool Player::hasMount(const Mount* mount) const
 		return false;
 	}
 
-	return mounts.find(mount->id) != mounts.end();
+	return mounts.contains(mount->id);
 }
 
 bool Player::hasMounts() const
@@ -4941,7 +4940,7 @@ void Player::parseAutoLootWindow(const std::string& text)
 			continue;
 		}
 
-		if (blockedIds.find(itemId) != blockedIds.end()) {
+		if (blockedIds.contains(itemId)) {
 			continue; 
 		}
 
@@ -4954,7 +4953,7 @@ void Player::parseAutoLootWindow(const std::string& text)
 
 		ret = autolootConfig.itemList.insert(std::make_pair(itemId, std::make_pair(backpackId, line.front() != '#')));
 		if (ret.second) {
-			if (line.front() != '#' && oldItems.find(itemId) == oldItems.end()) {
+			if (line.front() != '#' && !oldItems.contains(itemId)) {
 				if (!firstAddedItem) {
 					addedItems << ", ";
 				}
@@ -4968,7 +4967,7 @@ void Player::parseAutoLootWindow(const std::string& text)
 	std::ostringstream removedItems;
 	bool firstRemovedItem = true;
 	for (uint16_t oldId : oldItems) {
-		if (autolootConfig.itemList.find(oldId) == autolootConfig.itemList.end()) {
+		if (!autolootConfig.itemList.contains(oldId)) {
 			if (!firstRemovedItem) {
 				removedItems << ", ";
 			}
@@ -5138,7 +5137,7 @@ void Player::lootCorpse(Container* container)
 		uint16_t itemId = item->getID();
 		uint32_t value = 0;
 
-		if (moneyIds.find(itemId) != moneyIds.end()) {
+		if (moneyIds.contains(itemId)) {
 			if (itemId == 2160) {
 				value = item->getItemCount() * 10000;
 			} else if (itemId == 2152) {
@@ -5174,7 +5173,7 @@ void Player::lootCorpse(Container* container)
 		for (ContainerIterator it = container->iterator(); it.hasNext(); it.advance()) {
 			Item* goldItem = *it;
 			uint64_t worth = static_cast<uint64_t>(goldItem->getWorth());
-			if (worth > 0 && alreadyQueued.find(goldItem) == alreadyQueued.end()) {
+			if (worth > 0 && !alreadyQueued.contains(goldItem)) {
 				totalDepositValue += worth;
 				itemsToRemove.push_back(goldItem);
 				alreadyQueued.insert(goldItem);

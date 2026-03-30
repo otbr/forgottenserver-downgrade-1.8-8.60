@@ -19,7 +19,7 @@ bool PrivateChatChannel::isInvited(uint32_t guid) const
 	if (guid == getOwner()) {
 		return true;
 	}
-	return invites.find(guid) != invites.end();
+	return invites.contains(guid);
 }
 
 bool PrivateChatChannel::removeInvite(uint32_t guid) { return invites.erase(guid) != 0; }
@@ -60,7 +60,7 @@ void PrivateChatChannel::closeChannel() const
 
 bool ChatChannel::addUser(Player& player)
 {
-	if (users.find(player.getID()) != users.end()) {
+	if (users.contains(player.getID())) {
 		return false;
 	}
 
@@ -93,7 +93,7 @@ bool ChatChannel::removeUser(const Player& player)
 	return true;
 }
 
-bool ChatChannel::hasUser(const Player& player) { return users.find(player.getID()) != users.end(); }
+bool ChatChannel::hasUser(const Player& player) { return users.contains(player.getID()); }
 
 void ChatChannel::sendToAll(std::string_view message, SpeakClasses type) const
 {
@@ -104,7 +104,7 @@ void ChatChannel::sendToAll(std::string_view message, SpeakClasses type) const
 
 bool ChatChannel::talk(const Player& fromPlayer, SpeakClasses type, std::string_view text)
 {
-	if (users.find(fromPlayer.getID()) == users.end()) {
+	if (!users.contains(fromPlayer.getID())) {
 		return false;
 	}
 

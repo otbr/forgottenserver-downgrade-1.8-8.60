@@ -57,7 +57,7 @@ void Weapons::loadDefaults()
 {
 	for (size_t i = 100, size = Item::items.size(); i < size; ++i) {
 		const ItemType& it = Item::items.getItemType(i);
-		if (it.id == 0 || weapons.find(i) != weapons.end()) {
+		if (it.id == 0 || weapons.contains(i)) {
 			continue;
 		}
 

@@ -11,6 +11,37 @@
 
 extern Game g_game;
 
+namespace {
+
+int32_t parseInt32OrZero(std::string_view value)
+{
+	try {
+		return std::stoi(std::string(value));
+	} catch (...) {
+		return 0;
+	}
+}
+
+int64_t parseInt64OrZero(std::string_view value)
+{
+	try {
+		return std::stoll(std::string(value));
+	} catch (...) {
+		return 0;
+	}
+}
+
+uint64_t parseUint64OrZero(std::string_view value)
+{
+	try {
+		return std::stoull(std::string(value));
+	} catch (...) {
+		return 0;
+	}
+}
+
+} // namespace
+
 void Guild::addMember(Player* player) { membersOnline.push_back(player); }
 
 void Guild::removeMember(Player* player)
@@ -157,13 +188,13 @@ void IOGuild::guildWar(Player* player, const std::string& param)
 		}
 
 		// invite, target, fraglimit, money, duration
-		int32_t fragLimit = std::atoi(std::string(t[2]).c_str());
+		int32_t fragLimit = parseInt32OrZero(t[2]);
 		int64_t payment = 0;
 		int32_t durationDays = 3;
 
 		if (t.size() >= 5) {
-			payment = std::atoll(std::string(t[3]).c_str());
-			durationDays = std::atoi(std::string(t[4]).c_str());
+			payment = parseInt64OrZero(t[3]);
+			durationDays = parseInt32OrZero(t[4]);
 		}
 
 		// Validate frag limit
@@ -366,7 +397,7 @@ void IOGuild::guildBalance(Player* player, const std::string& param)
 			return;
 		}
 		
-		uint64_t amount = std::atoll(std::string(t[1]).c_str());
+		uint64_t amount = parseUint64OrZero(t[1]);
 		if (player->getBankBalance() < amount) {
 			player->sendChannelMessage("", "You do not have enough money in your bank account.", TALKTYPE_CHANNEL_R1, CHANNEL_GUILD);
 			return;
@@ -387,7 +418,7 @@ void IOGuild::guildBalance(Player* player, const std::string& param)
 			return;
 		}
 		
-		uint64_t amount = std::atoll(std::string(t[1]).c_str());
+		uint64_t amount = parseUint64OrZero(t[1]);
 		if (guild->getBankBalance() < amount) {
 			player->sendChannelMessage("", "The guild does not have enough money.", TALKTYPE_CHANNEL_R1, CHANNEL_GUILD);
 			return;

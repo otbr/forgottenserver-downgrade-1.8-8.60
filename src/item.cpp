@@ -1435,7 +1435,7 @@ bool Item::addImbuementSlots(const uint16_t amount)
 
 	if ((currentSlots + amount) >= limit)
 	{
-		std::cout << "Warning in call to Item:addImbuementSlots(). Total added would be more than supported memory limit!" << std::endl;
+		std::cout << "Warning in call to Item:addImbuementSlots(). Total added would be more than supported memory limit!\n";
 		return false;
 	}
 

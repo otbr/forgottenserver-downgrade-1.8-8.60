@@ -642,7 +642,7 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 	if (!it.name.empty()) {
 		std::string lowerCaseName = boost::algorithm::to_lower_copy(it.name);
-		if (nameToItems.find(lowerCaseName) == nameToItems.end()) {
+		if (!nameToItems.contains(lowerCaseName)) {
 			nameToItems.emplace(std::move(lowerCaseName), id);
 		}
 	}
@@ -1874,7 +1874,7 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 				case ITEM_PARSE_WORTH: {
 					uint64_t worth = pugi::cast<uint64_t>(valueAttribute.value());
-					if (currencyItems.find(worth) != currencyItems.end()) {
+					if (currencyItems.contains(worth)) {
 						LOG_WARN(fmt::format("[Warning - Items::parseItemNode] Duplicated currency worth. Item {} redefines worth {}", id, worth));
 					} else {
 						currencyItems.insert(CurrencyMap::value_type(worth, id));
@@ -2312,7 +2312,7 @@ void Items::buildInventoryList()
 		}
 	}
 	inventory.shrink_to_fit();
-	std::sort(inventory.begin(), inventory.end());
+	std::ranges::sort(inventory);
 }
 
 ItemType& Items::getItemType(size_t id)

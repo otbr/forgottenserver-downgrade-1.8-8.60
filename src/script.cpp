@@ -50,7 +50,7 @@ bool Scripts::loadScripts(const std::string& folderName, bool isLib, bool reload
 				continue;
 			}
 			const std::string canonical = fs::canonical(it->path()).string();
-			if (loadedFiles.find(canonical) == loadedFiles.end()) {
+			if (!loadedFiles.contains(canonical)) {
 				v.push_back(it->path());
 			}
 		}

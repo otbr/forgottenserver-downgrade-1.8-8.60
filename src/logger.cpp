@@ -82,7 +82,7 @@ std::string generateLogFileName(std::string_view basePath)
 		try {
 			std::filesystem::create_directories(directory);
 		} catch (const std::filesystem::filesystem_error& e) {
-			fprintf(stderr, "Failed to create log directory: %s\n", e.what());
+			fmt::print(stderr, "Failed to create log directory: {}\n", e.what());
 			throw;
 		}
 	}
@@ -109,7 +109,7 @@ public:
 			timestampedPath_ = generateLogFileName(filePath);
 
 			if (!checkDiskSpace(timestampedPath_)) {
-				fprintf(stderr, "Warning: Low disk space for logging\n");
+				fmt::print(stderr, "Warning: Low disk space for logging\n");
 			}
 
 			auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -154,7 +154,7 @@ public:
 			logger_->flush();
 
 		} catch (const std::exception& e) {
-			fprintf(stderr, "Error creating logger: %s\n", e.what());
+			fmt::print(stderr, "Error creating logger: {}\n", e.what());
 			throw;
 		}
 	}
@@ -268,7 +268,7 @@ protected:
 
 		try {
 			if (level >= LogLevel::ERRORR && !checkDiskSpace(timestampedPath_)) {
-				fprintf(stderr, "[DISK FULL] %.*s\n", (int)msg.size(), msg.data());
+				fmt::print(stderr, "[DISK FULL] {}\n", msg);
 			}
 
 			logger_->log(toSpd(level), msg);
@@ -277,7 +277,7 @@ protected:
 				logger_->flush();
 			}
 		} catch (const std::exception& e) {
-			fprintf(stderr, "[LOGGER ERROR] %s: %.*s\n", e.what(), (int)msg.size(), msg.data());
+			fmt::print(stderr, "[LOGGER ERROR] {}: {}\n", e.what(), msg);
 		}
 	}
 
@@ -327,7 +327,7 @@ bool initLogger(LogLevel level, std::string_view filePath, size_t rotateSize, si
 	}
 
 	catch (const std::exception& e) {
-		fprintf(stderr, "Failed to initialize logger: %s\n", e.what());
+		fmt::print(stderr, "Failed to initialize logger: {}\n", e.what());
 		return false;
 	}
 }

@@ -23,7 +23,7 @@ class ProtocolSpectator;
 using ProtocolSpectator_ptr = std::shared_ptr<ProtocolSpectator>;
 extern Game g_game;
 
-typedef std::map<std::string, uint32_t> DataList;
+using DataList = std::map<std::string, uint32_t>;
 
 class ProtocolSpectator {
     public:

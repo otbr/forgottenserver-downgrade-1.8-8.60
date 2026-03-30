@@ -133,7 +133,7 @@ bool Spawns::loadFromXml(std::string_view filename)
 
 				sb.mTypes.shrink_to_fit();
 				if (sb.mTypes.size() > 1) {
-					std::sort(sb.mTypes.begin(), sb.mTypes.end(),
+					std::ranges::sort(sb.mTypes,
 					          [](std::pair<MonsterType*, uint16_t> a, std::pair<MonsterType*, uint16_t> b) {
 						          return a.second > b.second;
 					          });

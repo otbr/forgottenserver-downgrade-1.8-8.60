@@ -130,7 +130,7 @@ ExperienceStages loadLuaStages(lua_State* L)
 	}
 	lua_pop(L, 1);
 
-	std::sort(stages.begin(), stages.end());
+	std::ranges::sort(stages);
 	return stages;
 }
 
@@ -155,7 +155,7 @@ ExperienceStages loadLuaSkillStages(lua_State* L)
 	}
 	lua_pop(L, 1);
 
-	std::sort(stages.begin(), stages.end());
+	std::ranges::sort(stages);
 	return stages;
 }
 
@@ -180,7 +180,7 @@ ExperienceStages loadLuaMagicLevelStages(lua_State* L)
 	}
 	lua_pop(L, 1);
 
-	std::sort(stages.begin(), stages.end());
+	std::ranges::sort(stages);
 	return stages;
 }
 

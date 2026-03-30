@@ -730,7 +730,19 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 				container = containerIt->second;
 			}
 			else {
-				container = new Container(ITEM_REWARD_CONTAINER);
+				Item* containerItem = Item::CreateItem(ITEM_REWARD_CONTAINER);
+				if (!containerItem) {
+					delete item;
+					continue;
+				}
+
+				container = containerItem->getContainer();
+				if (!container) {
+					g_game.ReleaseItem(containerItem);
+					delete item;
+					continue;
+				}
+
 				container->setIntAttr(ITEM_ATTRIBUTE_DATE, rewardDate); // Set the DATE attribute on the container
 				container->setIntAttr(ITEM_ATTRIBUTE_REWARDID, item->getIntAttr(ITEM_ATTRIBUTE_REWARDID));
 				dateContainers[rewardDate] = container;

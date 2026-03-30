@@ -174,30 +174,32 @@ DBResult_ptr Database::storeQuery(std::string_view query)
 #ifdef STATS_ENABLED
 	std::chrono::high_resolution_clock::time_point time_point = std::chrono::high_resolution_clock::now();
 #endif
+	tfs::detail::MysqlResult_ptr res;
+	while (true) {
+		if (!::executeQuery(handle, query, retryQueries) && !retryQueries) {
+			return nullptr;
+		}
 
-retry:
-	if (!::executeQuery(handle, query, retryQueries) && !retryQueries) {
-		return nullptr;
+		// we should call that every time as someone would call executeQuery('SELECT...')
+		// as it is described in MySQL manual: "it doesn't hurt" :P
+		res.reset(mysql_store_result(handle.get()));
+
+		if (res) {
+			break;
+		}
+
+		LOG_ERROR(fmt::format("[Error - mysql_store_result] Query: {}\nMessage: {}", query, mysql_error(handle.get())));
+		const unsigned error = mysql_errno(handle.get());
+		if (!isLostConnectionError(error) || !retryQueries) {
+			return nullptr;
+		}
 	}
-
-	// we should call that every time as someone would call executeQuery('SELECT...')
-	// as it is described in MySQL manual: "it doesn't hurt" :P
-	tfs::detail::MysqlResult_ptr res{mysql_store_result(handle.get())};
 
 #ifdef STATS_ENABLED
 	uint64_t ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - time_point).count();
 	g_stats.addSqlStats(std::make_unique<Stat>(ns, std::string(query.substr(0, 100)), std::string(query.substr(0, 256))));
 #endif
 	
-	if (!res) {
-		LOG_ERROR(fmt::format("[Error - mysql_store_result] Query: {}\nMessage: {}", query, mysql_error(handle.get())));
-		const unsigned error = mysql_errno(handle.get());
-		if (!isLostConnectionError(error) || !retryQueries) {
-			return nullptr;
-		}
-		goto retry;
-	}
-
 	// retrieving results of query
 	DBResult_ptr result = std::make_shared<DBResult>(std::move(res));
 	if (!result->hasNext()) {

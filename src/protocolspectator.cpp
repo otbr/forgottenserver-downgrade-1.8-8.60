@@ -89,7 +89,7 @@ void ProtocolSpectator::spectatorSay(ProtocolGame_ptr spectator, std::string_vie
                 return sendCastMessage("", "Wrong name.", TALKTYPE_CHANNEL_O, spectator);
 
             if (g_game.getPlayerByName(nickname) ||
-                ProtocolGame::spectatorNames.find(asLowerCaseString(nickname)) != ProtocolGame::spectatorNames.end())
+                ProtocolGame::spectatorNames.contains(asLowerCaseString(nickname)))
                 return sendCastMessage("", "This name is already being used.", TALKTYPE_CHANNEL_O, spectator);
 
             ProtocolGame::spectatorNames.erase(asLowerCaseString(spectator->getSpectatorName()));

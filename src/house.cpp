@@ -487,12 +487,12 @@ void House::resetTransferItem()
 
 HouseTransferItem* HouseTransferItem::createHouseTransferItem(House* house)
 {
-	HouseTransferItem* transferItem = new HouseTransferItem(house);
+	auto transferItem = std::make_unique<HouseTransferItem>(house);
 	transferItem->incrementReferenceCounter();
 	transferItem->setID(ITEM_DOCUMENT_RO);
 	transferItem->setSubType(1);
 	transferItem->setSpecialDescription(fmt::format("It is a house transfer document for '{:s}'.", house->getName()));
-	return transferItem;
+	return transferItem.release();
 }
 
 void HouseTransferItem::onTradeEvent(TradeEvents_t event, Player* owner)
@@ -632,7 +632,7 @@ bool AccessList::isInList(const Player* player) const
 	}
 
 	const auto& rank = player->getGuildRank();
-	return rank && guildRankList.find(rank->id) != guildRankList.end();
+	return rank && guildRankList.contains(rank->id);
 }
 
 Door::Door(uint16_t type) : Item(type) {}
@@ -660,7 +660,7 @@ void Door::setHouse(House* house)
 	this->house = house;
 
 	if (!accessList) {
-		accessList.reset(new AccessList());
+		accessList = std::make_unique<AccessList>();
 	}
 }
 
@@ -686,7 +686,7 @@ bool Door::canUse(const Player* player)
 void Door::setAccessList(std::string_view textlist)
 {
 	if (!accessList) {
-		accessList.reset(new AccessList());
+		accessList = std::make_unique<AccessList>();
 	}
 
 	accessList->parseList(textlist);
@@ -976,7 +976,7 @@ bool House::removeProtectionGuest(uint32_t playerId)
 
 bool House::isProtectionGuest(uint32_t playerId) const
 {
-	return protectionGuests.find(playerId) != protectionGuests.end();
+	return protectionGuests.contains(playerId);
 }
 
 void House::clearProtectionGuests()

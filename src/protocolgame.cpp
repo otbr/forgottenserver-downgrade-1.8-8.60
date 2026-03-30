@@ -344,7 +344,7 @@ void ProtocolGame::spectate(const std::string& name, const std::string& password
 	do {
 		spectator_name = std::string("Spectator_") + std::to_string(spectatorId);
 		spectatorId += 1;
-	} while (spectatorNames.find(asLowerCaseString(spectator_name)) != spectatorNames.end());
+	} while (spectatorNames.contains(asLowerCaseString(spectator_name)));
 	spectatorNames.insert(asLowerCaseString(spectator_name));
 
 	sendAddCreature(player, player->getPosition(), 0, CONST_ME_NONE);
@@ -2216,7 +2216,7 @@ void xorCrypt(std::string& buffer, const std::string& key)
 {
 	size_t strLen = buffer.length();
 	size_t keyLen = key.length();
-	for (int i = 0; i < (int)strLen; ++i) buffer[i] = (char)(((char)buffer[i]) ^ ((char)key[i % keyLen]));
+	for (size_t i = 0; i < strLen; ++i) buffer[i] = static_cast<char>(static_cast<char>(buffer[i]) ^ static_cast<char>(key[i % keyLen]));
 }
 
 void ProtocolGame::sendDllCheck()
@@ -2735,7 +2735,7 @@ void ProtocolGame::sendOutfitWindow()
 		}
 	}
 
-	std::sort(protocolOutfits.begin(), protocolOutfits.end(),
+	std::ranges::sort(protocolOutfits,
 	          [](const ProtocolOutfit& a, const ProtocolOutfit& b) { return a.lookType < b.lookType; });
 
 	if (isOTCv8) {
@@ -3213,8 +3213,8 @@ void ProtocolGame::spectatorTurn(uint8_t direction)
 	}
 
 	int index = 0;
-	std::sort(candidates.begin(), candidates.end());
-	for (int i = 0; i < (int)candidates.size(); ++i) {
+	std::ranges::sort(candidates);
+	for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
 		if (candidates[i] == player->getName()) {
 			index = i;
 			break;

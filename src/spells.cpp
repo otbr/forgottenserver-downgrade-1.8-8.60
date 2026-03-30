@@ -547,6 +547,25 @@ void Spell::postCastSpell(Player* player, bool finishedCast /*= true*/, bool pay
 			}
 			if (cooldown > 0) {
 				int32_t adjustedCooldown = std::max<int32_t>(1000, static_cast<int32_t>(cooldown) - momentumReduction);
+				// apply augment-based cooldown reduction for this spell
+				double augmentCooldownPercent = 0.0;
+						std::string spellName = std::string(getName());
+						std::string lowerSpell = boost::algorithm::to_lower_copy(spellName);
+				for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+					Item* invItem = player->getInventoryItem(static_cast<slots_t>(slot));
+					if (!invItem) continue;
+					const ItemType& it = Item::items[invItem->getID()];
+					if (!it.abilities) continue;
+					for (const auto& aug : it.abilities->augments) {
+						if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+							augmentCooldownPercent += aug.cooldownReductionPercent;
+						}
+					}
+				}
+				if (augmentCooldownPercent > 0.0) {
+					double factor = std::max(0.0, 1.0 - (augmentCooldownPercent / 100.0));
+					adjustedCooldown = std::max<int32_t>(1000, static_cast<int32_t>(std::round(adjustedCooldown * factor)));
+				}
 				auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLCOOLDOWN,
 				                                              adjustedCooldown, 0, false, spellId);
 				player->addCondition(std::move(condition));
@@ -636,8 +655,27 @@ bool InstantSpell::playerCastInstant(Player* player, std::string& param)
 			if (!target || target->isRemoved() || target->isDead()) {
 				if (!casterTargetOrDirection) {
 					if (cooldown > 0) {
+						int32_t adjustedCooldown = std::max<int32_t>(1000, static_cast<int32_t>(cooldown));
+						double augmentCooldownPercent = 0.0;
+						std::string spellName = std::string(getName());
+						std::string lowerSpell = boost::algorithm::to_lower_copy(spellName);
+						for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+							Item* invItem = player->getInventoryItem(static_cast<slots_t>(slot));
+							if (!invItem) continue;
+							const ItemType& it = Item::items[invItem->getID()];
+							if (!it.abilities) continue;
+							for (const auto& aug : it.abilities->augments) {
+								if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+									augmentCooldownPercent += aug.cooldownReductionPercent;
+								}
+							}
+						}
+						if (augmentCooldownPercent > 0.0) {
+							double factor = std::max(0.0, 1.0 - (augmentCooldownPercent / 100.0));
+							adjustedCooldown = std::max<int32_t>(1000, static_cast<int32_t>(std::round(adjustedCooldown * factor)));
+						}
 						auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLCOOLDOWN,
-						                                                  cooldown, 0, false, spellId);
+																  adjustedCooldown, 0, false, spellId);
 						player->addCondition(std::move(condition));
 					}
 
@@ -700,8 +738,27 @@ bool InstantSpell::playerCastInstant(Player* player, std::string& param)
 
 			if (ret != RETURNVALUE_NOERROR) {
 				if (cooldown > 0) {
+					int32_t adjustedCooldown = std::max<int32_t>(1000, static_cast<int32_t>(cooldown));
+					double augmentCooldownPercent = 0.0;
+					std::string spellName = std::string(getName());
+					std::string lowerSpell = boost::algorithm::to_lower_copy(spellName);
+					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+						Item* invItem = player->getInventoryItem(static_cast<slots_t>(slot));
+						if (!invItem) continue;
+						const ItemType& it = Item::items[invItem->getID()];
+						if (!it.abilities) continue;
+						for (const auto& aug : it.abilities->augments) {
+							if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+								augmentCooldownPercent += aug.cooldownReductionPercent;
+							}
+						}
+					}
+					if (augmentCooldownPercent > 0.0) {
+						double factor = std::max(0.0, 1.0 - (augmentCooldownPercent / 100.0));
+						adjustedCooldown = std::max<int32_t>(1000, static_cast<int32_t>(std::round(adjustedCooldown * factor)));
+					}
 					auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_SPELLCOOLDOWN,
-					                                                  cooldown, 0, false, spellId);
+																  adjustedCooldown, 0, false, spellId);
 					player->addCondition(std::move(condition));
 				}
 
@@ -740,13 +797,24 @@ bool InstantSpell::playerCastInstant(Player* player, std::string& param)
 		}
 	}
 
+	Player* p = player->getPlayer();
+	if (p) {
+		p->setLastCastSpell(getName());
+	}
+
 	bool result = internalCastSpell(player, var);
+
+	if (p) {
+		p->setLastCastSpell("");
+	}
+
 	if (result) {
 		postCastSpell(player);
 	}
 
 	return result;
 }
+
 
 bool InstantSpell::canThrowSpell(const Creature* creature, const Creature* target) const
 {
@@ -902,8 +970,20 @@ bool RuneSpell::executeUse(Player* player, Item* item, const Position&, Thing* t
 		var.setPosition(toPosition);
 	}
 
+	Player* p = player->getPlayer();
+	if (p) {
+		p->setLastCastSpell(getName());
+	}
+
 	if (!internalCastSpell(player, var, isHotkey)) {
+		if (p) {
+			p->setLastCastSpell("");
+		}
 		return false;
+	}
+
+	if (p) {
+		p->setLastCastSpell("");
 	}
 
 	postCastSpell(player);

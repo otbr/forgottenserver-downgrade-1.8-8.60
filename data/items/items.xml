@@ -66805,10 +66805,10 @@
 			<attribute key="elemental protection holy" value="3" />
 		</attribute>
 		<attribute key="script" value="moveevent">
-			<attribute key="level" value="300" />
+			<attribute key="level" value="10" />
 			<attribute key="slot" value="armor" />
-			<attribute key="vocation" value="Sorcerer;true, Master Sorcerer" />
 		</attribute>
+		<attribute key="augment:Energy Wave:baseDamagePercent" value="80" />
 	</item>
 	<item id="44624" article="an" name="mystical dragon robe">
 		<attribute key="armor" value="15" />

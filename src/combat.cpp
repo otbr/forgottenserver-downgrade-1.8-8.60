@@ -12,6 +12,7 @@
 #include "matrixarea.h"
 #include "scriptmanager.h"
 #include "weapons.h"
+#include <boost/algorithm/string.hpp>
 
 extern Game g_game;
 
@@ -900,6 +901,33 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			if (!damage.critical && damage.primary.type != COMBAT_HEALING && damage.origin != ORIGIN_CONDITION) {
 				uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE);
 				uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT);
+				// apply critical augments for last cast spell (if any)
+				double augmentCritChancePercent = 0.0;
+				double augmentCritExtraPercent = 0.0;
+				std::string lastSpell = casterPlayer->getLastCastSpell();
+				if (!lastSpell.empty()) {
+					std::string lowerSpell = boost::algorithm::to_lower_copy(lastSpell);
+					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+						Item* invItem = casterPlayer->getInventoryItem(static_cast<slots_t>(slot));
+						if (!invItem) continue;
+						const ItemType& it = Item::items[invItem->getID()];
+						if (!it.abilities) continue;
+						for (const auto& aug : it.abilities->augments) {
+							if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+								augmentCritChancePercent += aug.criticalChancePercent;
+								augmentCritExtraPercent += aug.criticalExtraPercent;
+							}
+						}
+					}
+				}
+				if (augmentCritChancePercent > 0.0) {
+					uint32_t extraUnits = static_cast<uint32_t>(std::round(augmentCritChancePercent * 100.0));
+					chance = static_cast<uint16_t>(std::min<uint32_t>(UINT16_MAX, static_cast<uint32_t>(chance) + extraUnits));
+				}
+				if (augmentCritExtraPercent > 0.0) {
+					uint32_t extraSkillUnits = static_cast<uint32_t>(std::round(augmentCritExtraPercent * 100.0));
+					skill = static_cast<uint16_t>(std::min<uint32_t>(UINT16_MAX, static_cast<uint32_t>(skill) + extraSkillUnits));
+				}
 				if (skill == 0 && chance > 0) {
 					skill = 5000;
 				}
@@ -908,6 +936,32 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					damage.secondary.value += std::round(damage.secondary.value * (skill / 10000.));
 					damage.critical = true;
 				}
+			}
+
+			// Apply augment-based base damage increase for the last-cast spell
+			double augmentBaseDamagePercent = 0.0;
+			if (casterPlayer) {
+				std::string lastSpell = casterPlayer->getLastCastSpell();
+				if (!lastSpell.empty()) {
+					std::string lowerSpell = boost::algorithm::to_lower_copy(lastSpell);
+					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+						Item* invItem = casterPlayer->getInventoryItem(static_cast<slots_t>(slot));
+						if (!invItem) continue;
+						const ItemType& it = Item::items[invItem->getID()];
+						if (!it.abilities) continue;
+						for (const auto& aug : it.abilities->augments) {
+							if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+								augmentBaseDamagePercent += aug.baseDamagePercent;
+							}
+						}
+					}
+				}
+			}
+
+			if (augmentBaseDamagePercent > 0.0) {
+				double factor = 1.0 + (augmentBaseDamagePercent / 100.0);
+				damage.primary.value = static_cast<int32_t>(std::round(damage.primary.value * factor));
+				damage.secondary.value = static_cast<int32_t>(std::round(damage.secondary.value * factor));
 			}
 		}
 
@@ -1036,6 +1090,46 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 					casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_BLUE);
 				}
 			}
+
+			// Apply augments that grant additional life / mana leech for specific spells
+			double augmentLifeLeechPercent = 0.0;
+			double augmentManaLeechPercent = 0.0;
+			if (casterPlayer) {
+				std::string lastSpell = casterPlayer->getLastCastSpell();
+				if (!lastSpell.empty()) {
+					std::string lowerSpell = boost::algorithm::to_lower_copy(lastSpell);
+					for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+						Item* invItem = casterPlayer->getInventoryItem(static_cast<slots_t>(slot));
+						if (!invItem) continue;
+						const ItemType& it = Item::items[invItem->getID()];
+						if (!it.abilities) continue;
+						for (const auto& aug : it.abilities->augments) {
+							if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+								augmentLifeLeechPercent += aug.lifeLeechPercent;
+								augmentManaLeechPercent += aug.manaLeechPercent;
+							}
+						}
+					}
+				}
+			}
+
+			if (augmentLifeLeechPercent > 0.0 && casterPlayer->getHealth() < casterPlayer->getMaxHealth()) {
+				CombatDamage augLeech;
+				augLeech.origin = ORIGIN_NONE;
+				augLeech.leeched = true;
+				augLeech.primary.value = std::round(totalDamage * (augmentLifeLeechPercent / 100.0));
+				g_game.combatChangeHealth(nullptr, casterPlayer, augLeech);
+				casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_RED);
+			}
+
+			if (augmentManaLeechPercent > 0.0 && casterPlayer->getMana() < casterPlayer->getMaxMana()) {
+				CombatDamage augManaLeech;
+				augManaLeech.origin = ORIGIN_NONE;
+				augManaLeech.leeched = true;
+				augManaLeech.primary.value = std::round(totalDamage * (augmentManaLeechPercent / 100.0));
+				g_game.combatChangeMana(nullptr, casterPlayer, augManaLeech);
+				casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_BLUE);
+			}
 		}
 
 		if (params.dispelType == CONDITION_PARALYZE) {
@@ -1060,9 +1154,36 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	int32_t criticalPrimary = 0;
 	int32_t criticalSecondary = 0;
 	if (!damage.critical && damage.primary.type != COMBAT_HEALING && casterPlayer &&
-	    damage.origin != ORIGIN_CONDITION) {
+		damage.origin != ORIGIN_CONDITION) {
 		uint16_t chance = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE);
 		uint16_t skill = casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT);
+		// augment-based critical modifiers for spells
+		double augmentCritChancePercent = 0.0;
+		double augmentCritExtraPercent = 0.0;
+		std::string lastSpell = casterPlayer->getLastCastSpell();
+		if (!lastSpell.empty()) {
+			std::string lowerSpell = boost::algorithm::to_lower_copy(lastSpell);
+			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+				Item* invItem = casterPlayer->getInventoryItem(static_cast<slots_t>(slot));
+				if (!invItem) continue;
+				const ItemType& it = Item::items[invItem->getID()];
+				if (!it.abilities) continue;
+				for (const auto& aug : it.abilities->augments) {
+					if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+						augmentCritChancePercent += aug.criticalChancePercent;
+						augmentCritExtraPercent += aug.criticalExtraPercent;
+					}
+				}
+			}
+		}
+		if (augmentCritChancePercent > 0.0) {
+			uint32_t extraUnits = static_cast<uint32_t>(std::round(augmentCritChancePercent * 100.0));
+			chance = static_cast<uint16_t>(std::min<uint32_t>(UINT16_MAX, static_cast<uint32_t>(chance) + extraUnits));
+		}
+		if (augmentCritExtraPercent > 0.0) {
+			uint32_t extraSkillUnits = static_cast<uint32_t>(std::round(augmentCritExtraPercent * 100.0));
+			skill = static_cast<uint16_t>(std::min<uint32_t>(UINT16_MAX, static_cast<uint32_t>(skill) + extraSkillUnits));
+		}
 		if (skill == 0 && chance > 0) {
 			skill = 5000;
 		}
@@ -1070,6 +1191,25 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 			criticalPrimary = std::round(damage.primary.value * (skill / 10000.));
 			criticalSecondary = std::round(damage.secondary.value * (skill / 10000.));
 			damage.critical = true;
+		}
+	}
+	// augment-based base damage for area spells
+	double augmentBaseDamagePercentArea = 0.0;
+	if (casterPlayer) {
+		std::string lastSpell = casterPlayer->getLastCastSpell();
+		if (!lastSpell.empty()) {
+			std::string lowerSpell = boost::algorithm::to_lower_copy(lastSpell);
+			for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+				Item* invItem = casterPlayer->getInventoryItem(static_cast<slots_t>(slot));
+				if (!invItem) continue;
+				const ItemType& it = Item::items[invItem->getID()];
+				if (!it.abilities) continue;
+				for (const auto& aug : it.abilities->augments) {
+					if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+						augmentBaseDamagePercentArea += aug.baseDamagePercent;
+					}
+				}
+			}
 		}
 	}
 
@@ -1115,8 +1255,8 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 					}
 				}
 
-				if (!params.aggressive ||
-				    (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
+					if (!params.aggressive ||
+					    (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
 					toDamageCreatures.push_back(creature);
 
 					if (params.targetCasterOrTopMost) {
@@ -1160,6 +1300,12 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 			                          params.itemId != 0, params.ignoreResistances)) {
 				continue;
 			}
+				// apply augment base damage percent for area spells (per-target)
+				if (augmentBaseDamagePercentArea > 0.0) {
+					double factor = 1.0 + (augmentBaseDamagePercentArea / 100.0);
+					damageCopy.primary.value = static_cast<int32_t>(std::round(damageCopy.primary.value * factor));
+					damageCopy.secondary.value = static_cast<int32_t>(std::round(damageCopy.secondary.value * factor));
+				}
 			success = g_game.combatChangeHealth(caster, creature, damageCopy);
 		} else {
 			success = g_game.combatChangeMana(caster, creature, damageCopy);
@@ -1208,6 +1354,46 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 						g_game.combatChangeMana(nullptr, casterPlayer, leechCombat);
 						casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_BLUE);
 					}
+				}
+
+				// Augment-based extra life / mana leech for the spell that triggered this combat
+				double augmentLifeLeechPercent = 0.0;
+				double augmentManaLeechPercent = 0.0;
+				if (casterPlayer) {
+					std::string lastSpell = casterPlayer->getLastCastSpell();
+					if (!lastSpell.empty()) {
+						std::string lowerSpell = boost::algorithm::to_lower_copy(lastSpell);
+						for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_LAST; ++slot) {
+							Item* invItem = casterPlayer->getInventoryItem(static_cast<slots_t>(slot));
+							if (!invItem) continue;
+							const ItemType& it = Item::items[invItem->getID()];
+							if (!it.abilities) continue;
+							for (const auto& aug : it.abilities->augments) {
+								if (boost::algorithm::to_lower_copy(aug.spellName) == lowerSpell) {
+									augmentLifeLeechPercent += aug.lifeLeechPercent;
+									augmentManaLeechPercent += aug.manaLeechPercent;
+								}
+							}
+						}
+					}
+				}
+
+				if (augmentLifeLeechPercent > 0.0 && casterPlayer->getHealth() < casterPlayer->getMaxHealth()) {
+					CombatDamage augLeech;
+					augLeech.origin = ORIGIN_NONE;
+					augLeech.leeched = true;
+					augLeech.primary.value = std::ceil(totalDamage * (augmentLifeLeechPercent / 100.0) / targetsCount);
+					g_game.combatChangeHealth(nullptr, casterPlayer, augLeech);
+					casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_RED);
+				}
+
+				if (augmentManaLeechPercent > 0.0 && casterPlayer->getMana() < casterPlayer->getMaxMana()) {
+					CombatDamage augManaLeech;
+					augManaLeech.origin = ORIGIN_NONE;
+					augManaLeech.leeched = true;
+					augManaLeech.primary.value = std::ceil(totalDamage * (augmentManaLeechPercent / 100.0) / targetsCount);
+					g_game.combatChangeMana(nullptr, casterPlayer, augManaLeech);
+					casterPlayer->sendMagicEffect(casterPlayer->getPosition(), CONST_ME_MAGIC_BLUE);
 				}
 			}
 

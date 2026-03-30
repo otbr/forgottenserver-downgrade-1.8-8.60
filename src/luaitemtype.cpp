@@ -654,6 +654,33 @@ int luaItemTypeGetAbilities(lua_State* L)
 			lua_rawseti(L, -2, e);
 		}
 		lua_setfield(L, -2, "experienceRate");
+
+		// Augments
+		lua_createtable(L, 0, static_cast<int>(abilities.augments.size()));
+		for (size_t i = 0; i < abilities.augments.size(); ++i) {
+			auto& aug = abilities.augments[i];
+			lua_createtable(L, 0, 8);
+			pushString(L, aug.spellName);
+			lua_setfield(L, -2, "spellName");
+			lua_pushnumber(L, aug.lifeLeechPercent);
+			lua_setfield(L, -2, "lifeLeechPercent");
+			lua_pushnumber(L, aug.manaLeechPercent);
+			lua_setfield(L, -2, "manaLeechPercent");
+			lua_pushinteger(L, aug.chainExtra);
+			lua_setfield(L, -2, "chainExtra");
+			lua_pushnumber(L, aug.cooldownReductionPercent);
+			lua_setfield(L, -2, "cooldownReductionPercent");
+			lua_pushnumber(L, aug.criticalExtraPercent);
+			lua_setfield(L, -2, "criticalExtraPercent");
+			lua_pushnumber(L, aug.criticalChancePercent);
+			lua_setfield(L, -2, "criticalChancePercent");
+			lua_pushboolean(L, aug.grantsCriticalChance);
+			lua_setfield(L, -2, "grantsCriticalChance");
+			lua_pushnumber(L, aug.baseDamagePercent);
+			lua_setfield(L, -2, "baseDamagePercent");
+			lua_rawseti(L, -2, static_cast<int>(i + 1));
+		}
+		lua_setfield(L, -2, "augments");
 	}
 	return 1;
 }

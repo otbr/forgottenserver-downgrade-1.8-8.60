@@ -276,6 +276,22 @@ struct Abilities
 	bool manaShield = false;
 	bool invisible = false;
 	bool regeneration = false;
+	
+	// Augments attached to this item type
+	struct Augment {
+		std::string spellName; // spell this augment applies to (case-insensitive)
+		// supported augment effects
+		double lifeLeechPercent = 0.0;
+		double manaLeechPercent = 0.0;
+		int32_t chainExtra = 0; // extra chains for chainspells
+		double cooldownReductionPercent = 0.0; // percent reduction of cooldown
+		double criticalExtraPercent = 0.0; // extra critical damage percent
+		double criticalChancePercent = 0.0; // grants critical chance for the spell
+		bool grantsCriticalChance = false;
+		double baseDamagePercent = 0.0; // increases base damage for the spell
+	};
+
+	std::vector<Augment> augments;
 };
 
 class ConditionDamage;

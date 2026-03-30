@@ -1957,7 +1957,64 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 				}
 			}
 		} else {
-			LOG_WARN(fmt::format("[Warning - Items::parseItemNode] Unknown key value: {}", keyAttribute.as_string()));
+			// support augment keys in the format: augment:SPELL NAME:TYPE (e.g. augment:energy wave:lifeleechpercent)
+			if (boost::algorithm::starts_with(tmpStrValue, "augment:")) {
+				std::vector<std::string> parts;
+				size_t pos = 0;
+				while (true) {
+					size_t next = tmpStrValue.find(':', pos);
+					if (next == std::string::npos) {
+						parts.push_back(tmpStrValue.substr(pos));
+						break;
+					}
+					parts.push_back(tmpStrValue.substr(pos, next - pos));
+					pos = next + 1;
+				}
+
+					if (parts.size() >= 3) {
+						std::string spellName = parts[1];
+						std::string type = parts[2];
+						Abilities::Augment aug;
+						aug.spellName = spellName;
+						double val = 0.0;
+						try {
+							val = pugi::cast<double>(valueAttribute.value());
+						} catch (...) {
+							val = 0.0;
+						}
+
+						// only allow a single augment per item
+						if (!abilities.augments.empty()) {
+							LOG_WARN(fmt::format("[Warning - Items::parseItemNode] Item {} already has an augment, ignoring extra augment: {}", id, keyAttribute.as_string()));
+						} else {
+							std::string typeLower = boost::algorithm::to_lower_copy(type);
+							if (typeLower == "lifeleechpercent" || typeLower == "lifeleech") {
+								aug.lifeLeechPercent = val;
+							} else if (typeLower == "manaleechpercent" || typeLower == "manaleech") {
+								aug.manaLeechPercent = val;
+							} else if (typeLower == "chain" || typeLower == "chains") {
+								aug.chainExtra = static_cast<int32_t>(val);
+							} else if (typeLower == "cooldown" || typeLower == "cooldownpercent" || typeLower == "cooldownreduce") {
+								aug.cooldownReductionPercent = val;
+							} else if (typeLower == "criticalextradamage" || typeLower == "criticalextra") {
+								aug.criticalExtraPercent = val;
+							} else if (typeLower == "criticalchance") {
+								aug.criticalChancePercent = val;
+								if (val > 0) aug.grantsCriticalChance = true;
+							} else if (typeLower == "basedamagepercent" || typeLower == "basedamage") {
+								aug.baseDamagePercent = val;
+							} else {
+								LOG_WARN(fmt::format("[Warning - Items::parseItemNode] Unknown augment type: {}", type));
+							}
+
+							abilities.augments.push_back(aug);
+						}
+					} else {
+						LOG_WARN(fmt::format("[Warning - Items::parseItemNode] Invalid augment key: {}", keyAttribute.as_string()));
+					}
+			} else {
+				LOG_WARN(fmt::format("[Warning - Items::parseItemNode] Unknown key value: {}", keyAttribute.as_string()));
+			}
 		}
 	}
 

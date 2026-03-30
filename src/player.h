@@ -210,6 +210,10 @@ public:
 	void setLastWalkthroughAttempt(int64_t walkthroughAttempt) { lastWalkthroughAttempt = walkthroughAttempt; }
 	void setLastWalkthroughPosition(Position walkthroughPosition) { lastWalkthroughPosition = walkthroughPosition; }
 
+	// track spell name used to cast (used by augment system to detect which spell triggered combat)
+	void setLastCastSpell(std::string_view spell) { lastCastSpell = spell; }
+	const std::string& getLastCastSpell() const { return lastCastSpell; }
+
 	uint16_t getClientIcons() const;
 
 	const GuildWarVector& getGuildWarVector() const { return guildWarVector; }
@@ -1278,6 +1282,7 @@ private:
 
 	std::string name;
 	std::string guildNick;
+	std::string lastCastSpell;
 
 	Skill skills[SKILL_LAST + 1];
 	LightInfo itemsLight;

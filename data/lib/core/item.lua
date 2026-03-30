@@ -768,6 +768,46 @@ do
 			end
 		end
 
+			-- augments (from itemType abilities)
+			do
+				local abilities = itemType and itemType:getAbilities() or nil
+				if abilities and abilities.augments and #abilities.augments > 0 then
+					local parts = {}
+					for i = 1, #abilities.augments do
+						local aug = abilities.augments[i]
+						local spell = aug.spellName or ""
+						local subparts = {}
+						if aug.lifeLeechPercent and aug.lifeLeechPercent > 0 then
+							subparts[#subparts + 1] = fmt("+%g%% life leech", aug.lifeLeechPercent)
+						end
+						if aug.manaLeechPercent and aug.manaLeechPercent > 0 then
+							subparts[#subparts + 1] = fmt("+%g%% mana leech", aug.manaLeechPercent)
+						end
+						if aug.chainExtra and aug.chainExtra > 0 then
+							subparts[#subparts + 1] = fmt("+%d chain%s", aug.chainExtra, (aug.chainExtra > 1 and "s" or ""))
+						end
+						if aug.cooldownReductionPercent and aug.cooldownReductionPercent > 0 then
+							subparts[#subparts + 1] = fmt("-%g%% cooldown", aug.cooldownReductionPercent)
+						end
+						if aug.criticalExtraPercent and aug.criticalExtraPercent > 0 then
+							subparts[#subparts + 1] = fmt("+%g%% critical extra damage", aug.criticalExtraPercent)
+						end
+						if aug.baseDamagePercent and aug.baseDamagePercent > 0 then
+							subparts[#subparts + 1] = fmt("+%g%% base damage", aug.baseDamagePercent)
+						end
+						if aug.criticalChancePercent and aug.criticalChancePercent > 0 then
+							subparts[#subparts + 1] = fmt("+%g%% critical chance", aug.criticalChancePercent)
+						end
+						if #subparts > 0 and spell ~= "" then
+							parts[#parts + 1] = fmt("%s -> %s", spell, concat(subparts, ", "))
+						end
+					end
+					if #parts > 0 then
+						response[#response + 1] = fmt("\nAugments: %s.", concat(parts, ", "))
+					end
+				end
+			end
+
 		-- empty fluid container suffix
 		if itemGroup == ITEM_GROUP_FLUID and subType < 1 then response[#response + 1] = " It is empty." end
 

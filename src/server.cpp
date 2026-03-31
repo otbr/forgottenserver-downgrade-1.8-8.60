@@ -109,8 +109,9 @@ void ServiceManager::die()
 	ConnectionManager::getInstance().closeAll();
 	io_context.stop();
 
-	// Wait for all I/O threads to finish (jthread join is automatic, but be explicit)
-	ioThreads.clear();
+	// Do NOT join ioThreads here — this handler may be running on one of
+	// them, and joining a thread from itself throws "Resource deadlock avoided".
+	// The main thread joins them after io_context.run() returns in run().
 }
 
 void ServiceManager::run()
@@ -131,6 +132,15 @@ void ServiceManager::run()
 	}
 
 	io_context.run();
+
+	// io_context.stop() was called from die(). All extra threads' run() calls
+	// have returned. Join them here on the main thread (safe, no self-join).
+	for (auto& t : ioThreads) {
+		if (t.joinable()) {
+			t.join();
+		}
+	}
+	ioThreads.clear();
 }
 
 void ServiceManager::stop()

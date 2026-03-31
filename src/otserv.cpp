@@ -10,6 +10,7 @@
 #include "databasetasks.h"
 #include "game.h"
 #include "imbuement.h"
+#include "outfit.h"
 #include "logger.h"
 #include "outputmessage.h"
 #include "protocollogin.h"
@@ -83,6 +84,9 @@ void mainLoader(ServiceManager* services)
 #endif
 
 	printServerVersion();
+
+	// Suppress console output during loading — logs still go to file
+	g_logger().setConsoleLevel(LogLevel::CRITICAL);
 
 	// check if config.lua or config.lua.dist exist
 	auto configFile = getString(ConfigManager::CONFIG_FILE);
@@ -314,20 +318,86 @@ void startServer()
 	g_loaderSignal.wait(g_loaderUniqueLock);
 
 	if (serviceManager.is_running()) {
-		LOG_INFO(">> Version TFS: {} | Protocol: {} | Ports: {} / {} | IP: {}", 
-			fmt::format(fg(fmt::color::lime_green), "{}", STATUS_SERVER_VERSION),
-			fmt::format(fg(fmt::color::lime_green), "{}", CLIENT_VERSION_STR),
-			fmt::format(fg(fmt::color::lime_green), "{}", getInteger(ConfigManager::LOGIN_PORT)),
-			fmt::format(fg(fmt::color::lime_green), "{}", getInteger(ConfigManager::GAME_PORT)),
-			fmt::format(fg(fmt::color::lime_green), "{}", getString(ConfigManager::IP)));
+		using fmt::fg;
+		using fmt::emphasis;
+
+		const auto cyan_b    = fg(fmt::color::cyan) | emphasis::bold;
+		const auto green_b   = fg(fmt::color::lime_green) | emphasis::bold;
+		const auto white_b   = fg(fmt::color::white) | emphasis::bold;
+		const auto gray      = fg(fmt::color::gray);
+		const auto dark_gray = fg(fmt::color::dim_gray);
+
+		// ── Server Config ──
+		fmt::print(cyan_b, "    ⚙ SERVER CONFIG\n");
+		fmt::print(dark_gray, "    ────────────────────────────────────────\n");
+		fmt::print(gray, "    {:<20}", "World Map");
+		fmt::print(white_b, "{}\n", getString(ConfigManager::MAP_NAME));
+		fmt::print(gray, "    {:<20}", "World Size");
+		fmt::print(white_b, "{}x{}\n", g_game.map.getWidth(), g_game.map.getHeight());
+		fmt::print(gray, "    {:<20}", "World Type");
+		fmt::print(white_b, "{}\n", getString(ConfigManager::WORLD_TYPE));
+		fmt::print(gray, "    {:<20}", "Account Manager");
+		fmt::print(white_b, "{}\n", getBoolean(ConfigManager::ACCOUNT_MANAGER) ? "enabled" : "disabled");
+		fmt::print(gray, "    {:<20}", "Game Port");
+		fmt::print(white_b, "{}\n", getInteger(ConfigManager::GAME_PORT));
+		fmt::print(gray, "    {:<20}", "Login Port");
+		fmt::print(white_b, "{}\n", getInteger(ConfigManager::LOGIN_PORT));
+		fmt::print(gray, "    {:<20}", "Status Port");
+		fmt::print(white_b, "{}\n", getInteger(ConfigManager::STATUS_PORT));
+		fmt::print("\n");
+
+		// ── Threads ──
+		int networkThreads = std::max(1, static_cast<int>(getInteger(ConfigManager::NETWORK_THREADS)));
+		fmt::print(cyan_b, "    ⚙ THREADS\n");
+		fmt::print(dark_gray, "    ────────────────────────────────────────\n");
+		fmt::print(gray, "    {:<20}", "Network I/O");
+		fmt::print(white_b, "{}\n", networkThreads);
+		fmt::print(gray, "    {:<20}", "ThreadPool Workers");
+		fmt::print(white_b, "{}\n", g_threadPool.get_thread_count());
+		fmt::print(gray, "    {:<20}", "Dispatcher");
+		fmt::print(white_b, "1\n");
+		fmt::print(gray, "    {:<20}", "Scheduler");
+		fmt::print(white_b, "1\n");
+		fmt::print(gray, "    {:<20}", "DB Tasks");
+		fmt::print(white_b, "1\n");
+		fmt::print("\n");
+
+		// ── Game Data ──
+		fmt::print(cyan_b, "    ⚙ GAME DATA\n");
+		fmt::print(dark_gray, "    ────────────────────────────────────────\n");
+		fmt::print(gray, "    {:<20}", "Items");
+		fmt::print(white_b, "{}\n", Item::items.size());
+		fmt::print(gray, "    {:<20}", "Vocations");
+		fmt::print(white_b, "{}\n", g_vocations.getVocations().size());
+		fmt::print(gray, "    {:<20}", "Outfits");
+		fmt::print(white_b, "{} (M) + {} (F)\n",
+			Outfits::getInstance().getOutfits(PLAYERSEX_MALE).size(),
+			Outfits::getInstance().getOutfits(PLAYERSEX_FEMALE).size());
+		fmt::print(gray, "    {:<20}", "Npcs");
+		fmt::print(white_b, "{}\n", g_game.map.spawns.getNpcCount());
+		fmt::print(gray, "    {:<20}", "Monsters");
+		fmt::print(white_b, "{}\n", g_monsters.monsters.size());
 		{
-			int networkThreads = std::max(1, static_cast<int>(getInteger(ConfigManager::NETWORK_THREADS)));
-			if (networkThreads > 1) {
-				LOG_NETWORK(">> I/O threads: {}", networkThreads);
-			}
+			auto& imbue = Imbuements::getInstance();
+			fmt::print(gray, "    {:<20}", "Imbuements");
+			fmt::print(white_b, "{}, categories {}, {} definitions\n",
+				imbue.getBases().size(), imbue.getCategories().size(), imbue.getDefinitions().size());
 		}
-		LOG_INFO("");
-		LOG_INFO(">> {} Server Online!", getString(ConfigManager::SERVER_NAME));
+		fmt::print("\n");
+
+		// ── Online ──
+		fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
+		fmt::print(green_b, "    ◆ ");
+		fmt::print(white_b, "{}", getString(ConfigManager::SERVER_NAME));
+		fmt::print(gray, " — ");
+		fmt::print(green_b, "SERVER ONLINE");
+		fmt::print(green_b, " ◆\n");
+		fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
+		fmt::print("\n");
+		std::fflush(stdout);
+
+		// Restore console output now that all fmt::print sections are done
+		g_logger().setConsoleLevel(LogLevel::INFO);
 	serviceManager.run();
 	} else {
 		LOG_INFO(">> No services running. The server is NOT online.");
@@ -374,50 +444,99 @@ void startServer()
 
 void printServerVersion()
 {
+	using fmt::fg;
+	using fmt::emphasis;
+
+	const auto purple      = fg(fmt::color::medium_purple);
+	const auto cyan_b      = fg(fmt::color::cyan) | emphasis::bold;
+	const auto white_b     = fg(fmt::color::white) | emphasis::bold;
+	const auto gray        = fg(fmt::color::gray);
+	const auto dark_gray   = fg(fmt::color::dim_gray);
+	const auto green_b     = fg(fmt::color::lime_green) | emphasis::bold;
+	const auto magenta_b   = fg(fmt::color::magenta) | emphasis::bold;
+	const auto red_b       = fg(fmt::color::orange_red) | emphasis::bold;
+
+	// ── ASCII Banner (gradient purple → cyan) ──
+	fmt::print("\n");
+	fmt::print(purple | emphasis::bold,
+		"    ████████╗███████╗███████╗    ██████╗  ██████╗  ██████╗ \n");
+	fmt::print(fg(fmt::color::medium_orchid),
+		"    ╚══██╔══╝██╔════╝██╔════╝    ██╔══██╗██╔════╝ ██╔═████╗\n");
+	fmt::print(fg(fmt::color::orchid),
+		"       ██║   █████╗  ███████╗    ██████╔╝███████╗ ██║██╔██║\n");
+	fmt::print(fg(fmt::color::violet),
+		"       ██║   ██╔══╝  ╚════██║    ██╔══██╗██╔═══██╗████╔╝██║\n");
+	fmt::print(cyan_b,
+		"       ██║   ██║     ███████║    ██████╔╝╚██████╔╝╚██████╔╝\n");
+	fmt::print(fg(fmt::color::dark_cyan),
+		"       ╚═╝   ╚═╝     ╚══════╝    ╚═════╝  ╚═════╝  ╚═════╝ \n");
+	fmt::print("\n");
+
+	// ── Version bar ──
+	fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
+	fmt::print(gray, "    ◆ ");
+	fmt::print(gray, "VERSION ");
+	fmt::print(white_b, "{}", STATUS_SERVER_VERSION);
+	fmt::print(dark_gray, "  ·  ");
+	fmt::print(gray, "CLIENT ");
+	fmt::print(white_b, "{}", CLIENT_VERSION_STR);
+	fmt::print(dark_gray, "  ·  ");
+	fmt::print(gray, "BUILD ");
 #if defined(GIT_RETRIEVED_STATE) && GIT_RETRIEVED_STATE
-	LOG_INFO(fmt::format("{} - Version {}", STATUS_SERVER_NAME, GIT_DESCRIBE));
-	LOG_INFO(fmt::format("Git SHA1 {} dated {}", GIT_SHORT_SHA1, GIT_COMMIT_DATE_ISO8601));
+	fmt::print(green_b, "{}", GIT_SHORT_SHA1);
 #if GIT_IS_DIRTY
-	LOG_INFO("*** DIRTY - NOT OFFICIAL RELEASE ***");
+	fmt::print(fg(fmt::color::gold) | emphasis::bold, " DIRTY");
 #endif
 #else
-	LOG_INFO(fmt::format("{} - Version {}", STATUS_SERVER_NAME, STATUS_SERVER_VERSION));
+	fmt::print(green_b, "RELEASE");
 #endif
-	LOG_INFO("");
+	fmt::print("\n");
+	fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
 
-	LOG_INFO(fmt::format("Compiled with {}", BOOST_COMPILER));
-	LOG_INFO(fmt::format("Compiled on {} {} for platform ", __DATE__, __TIME__));
+	// ── Build info section ──
+	fmt::print(cyan_b, "\n    ⚙ BUILD INFO\n");
+	fmt::print(dark_gray, "    ────────────────────────────────────────\n");
+	fmt::print(gray, "    {:<20}", "Compiler");
+	fmt::print(white_b, "{}\n", BOOST_COMPILER);
+	fmt::print(gray, "    {:<20}", "Compiled");
+	fmt::print(white_b, "{} {}\n", __DATE__, __TIME__);
+	fmt::print(gray, "    {:<20}", "Platform");
 #if defined(__amd64__) || defined(_M_X64)
-	LOG_INFO("x64");
+	fmt::print(white_b, "x64\n");
 #elif defined(__i386__) || defined(_M_IX86) || defined(_X86_)
-	LOG_INFO("x86");
+	fmt::print(white_b, "x86\n");
 #elif defined(__arm__)
-	LOG_INFO("ARM");
+	fmt::print(white_b, "ARM\n");
 #else
-	LOG_INFO("unknown");
+	fmt::print(white_b, "unknown\n");
 #endif
+	fmt::print(gray, "    {:<20}", "Lua Engine");
 #if defined(LUAJIT_VERSION)
-	LOG_INFO(fmt::format("Linked with {} for Lua support", LUAJIT_VERSION));
+	fmt::print(white_b, "{}\n", LUAJIT_VERSION);
 #else
-	LOG_INFO(fmt::format("Linked with {} for Lua support", LUA_RELEASE));
+	fmt::print(white_b, "{}\n", LUA_RELEASE);
 #endif
-	LOG_INFO("");
+	fmt::print(gray, "    {:<20}", "CPU Threads");
+	fmt::print(white_b, "{}\n", std::max(1u, std::thread::hardware_concurrency()));
+	fmt::print("\n");
 
-	LOG_INFO(fmt::format("A server developed by {}", STATUS_SERVER_DEVELOPERS));
-	LOG_INFO(fmt::format(fg(fmt::color::red), "Downgraded and further developed by Nekiro / MillhioreBT"));
-	LOG_INFO("Visit our forum for updates, support, and resources: http://otland.net/.");
-	LOG_INFO("");
-	printCustomInfo();
-	LOG_INFO("");
+	// ── Credits ──
+	fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
+	fmt::print(gray, "    ► Developed by ");
+	fmt::print(white_b, "{}\n", STATUS_SERVER_DEVELOPERS);
+	fmt::print(gray, "    ► Downgraded by ");
+	fmt::print(magenta_b, "Nekiro / MillhioreBT\n");
+	fmt::print(gray, "    ► Custom fork by ");
+	fmt::print(red_b, "Mateuzkl\n");
+	fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
+	fmt::print("\n");
+
+	std::fflush(stdout);
 }
 
 void printCustomInfo()
 {
-	LOG_INFO("");
-	LOG_INFO(fmt::format(fg(fmt::color::red), "Further developed by Mateuzkl (Custom Modified Version)"));
-	LOG_INFO(fmt::format(fg(fmt::color::yellow), "Repository ORIGINAL: https://github.com/MillhioreBT/forgottenserver-downgrade"));
-	LOG_INFO(fmt::format(fg(fmt::color::yellow), "Repository CUSTOM: https://github.com/Mateuzkl/forgottenserver-downgrade"));
-	LOG_INFO("");
+	// Credits are now part of printServerVersion() banner
 }
 
 #ifndef _WIN32

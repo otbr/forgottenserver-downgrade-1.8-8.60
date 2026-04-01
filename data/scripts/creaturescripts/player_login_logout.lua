@@ -15,7 +15,7 @@ function loginMessage.onLogin(player)
     local level = player:getLevel()
     local name = player:getName()
 
-    logger.info("%s► LOGIN   %s%s%-20s%s  Lvl:%s%-5d%s  Voc:%-12s  IP:%s",
+    logger.info("%sLOGIN           %s%s%-20s%sLvl:%s%-5d%sVoc:%-12sIP:%s",
         logger.colors.lime_green,
         logger.colors.reset,
         logger.colors.bold_white, name, logger.colors.reset,
@@ -84,7 +84,7 @@ function logoutMessage.onLogout(player)
     local level = player:getLevel()
     local name = player:getName()
 
-    logger.info("%s◄ LOGOUT  %s%s%-20s%s  Lvl:%s%-5d%s  Voc:%-12s  IP:%s",
+    logger.info("%sLOGOUT           %s%s%-20s%s  Lvl:%s%-5d%s  Voc:%-12s  IP:%s",
         logger.colors.orange_red,
         logger.colors.reset,
         logger.colors.bold_white, name, logger.colors.reset,

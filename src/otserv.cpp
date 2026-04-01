@@ -328,7 +328,7 @@ void startServer()
 		const auto dark_gray = fg(fmt::color::dim_gray);
 
 		// ── Server Config ──
-		fmt::print(cyan_b, "    ⚙ SERVER CONFIG\n");
+		fmt::print(cyan_b, "    ⚙  SERVER CONFIG\n");
 		fmt::print(dark_gray, "    ────────────────────────────────────────\n");
 		fmt::print(gray, "    {:<20}", "World Map");
 		fmt::print(white_b, "{}\n", getString(ConfigManager::MAP_NAME));
@@ -339,16 +339,16 @@ void startServer()
 		fmt::print(gray, "    {:<20}", "Account Manager");
 		fmt::print(white_b, "{}\n", getBoolean(ConfigManager::ACCOUNT_MANAGER) ? "enabled" : "disabled");
 		fmt::print(gray, "    {:<20}", "Game Port");
-		fmt::print(white_b, "{}\n", getInteger(ConfigManager::GAME_PORT));
+		fmt::print(white_b, "{} ✔\n", getInteger(ConfigManager::GAME_PORT));
 		fmt::print(gray, "    {:<20}", "Login Port");
-		fmt::print(white_b, "{}\n", getInteger(ConfigManager::LOGIN_PORT));
+		fmt::print(white_b, "{} ✔\n", getInteger(ConfigManager::LOGIN_PORT));
 		fmt::print(gray, "    {:<20}", "Status Port");
-		fmt::print(white_b, "{}\n", getInteger(ConfigManager::STATUS_PORT));
+		fmt::print(white_b, "{} ✔\n", getInteger(ConfigManager::STATUS_PORT));
 		fmt::print("\n");
 
 		// ── Threads ──
 		int networkThreads = std::max(1, static_cast<int>(getInteger(ConfigManager::NETWORK_THREADS)));
-		fmt::print(cyan_b, "    ⚙ THREADS\n");
+		fmt::print(cyan_b, "    ⚙  THREADS\n");
 		fmt::print(dark_gray, "    ────────────────────────────────────────\n");
 		fmt::print(gray, "    {:<20}", "Network I/O");
 		fmt::print(white_b, "{}\n", networkThreads);
@@ -363,24 +363,24 @@ void startServer()
 		fmt::print("\n");
 
 		// ── Game Data ──
-		fmt::print(cyan_b, "    ⚙ GAME DATA\n");
+		fmt::print(cyan_b, "    ⚙  GAME DATA\n");
 		fmt::print(dark_gray, "    ────────────────────────────────────────\n");
 		fmt::print(gray, "    {:<20}", "Items");
-		fmt::print(white_b, "{}\n", Item::items.size());
+		fmt::print(white_b, "{} ✔\n", Item::items.size());
 		fmt::print(gray, "    {:<20}", "Vocations");
-		fmt::print(white_b, "{}\n", g_vocations.getVocations().size());
+		fmt::print(white_b, "{} ✔\n", g_vocations.getVocations().size());
 		fmt::print(gray, "    {:<20}", "Outfits");
-		fmt::print(white_b, "{} (M) + {} (F)\n",
+		fmt::print(white_b, "{} (M) + {} (F) ✔\n",
 			Outfits::getInstance().getOutfits(PLAYERSEX_MALE).size(),
 			Outfits::getInstance().getOutfits(PLAYERSEX_FEMALE).size());
 		fmt::print(gray, "    {:<20}", "Npcs");
-		fmt::print(white_b, "{}\n", g_game.map.spawns.getNpcCount());
+		fmt::print(white_b, "{} ✔\n", g_game.map.spawns.getNpcCount());
 		fmt::print(gray, "    {:<20}", "Monsters");
-		fmt::print(white_b, "{}\n", g_monsters.monsters.size());
+		fmt::print(white_b, "{} ✔\n", g_monsters.monsters.size());
 		{
 			auto& imbue = Imbuements::getInstance();
 			fmt::print(gray, "    {:<20}", "Imbuements");
-			fmt::print(white_b, "{}, categories {}, {} definitions\n",
+			fmt::print(white_b, "{}, categories {}, {} definitions ✔\n",
 				imbue.getBases().size(), imbue.getCategories().size(), imbue.getDefinitions().size());
 		}
 		fmt::print("\n");
@@ -456,20 +456,20 @@ void printServerVersion()
 	const auto magenta_b   = fg(fmt::color::magenta) | emphasis::bold;
 	const auto red_b       = fg(fmt::color::orange_red) | emphasis::bold;
 
-	// ── ASCII Banner (gradient purple → cyan) ──
+	// ── ASCII Banner ──
 	fmt::print("\n");
 	fmt::print(purple | emphasis::bold,
-		"    ████████╗███████╗███████╗    ██████╗  ██████╗  ██████╗ \n");
+		"    ████████╗███████╗███████╗    ██████╗  ██████╗ ██╗    ██╗███╗   ██╗\n");
 	fmt::print(fg(fmt::color::medium_orchid),
-		"    ╚══██╔══╝██╔════╝██╔════╝    ██╔══██╗██╔════╝ ██╔═████╗\n");
+		"    ╚══██╔══╝██╔════╝██╔════╝    ██╔══██╗██╔═══██╗██║    ██║████╗  ██║\n");
 	fmt::print(fg(fmt::color::orchid),
-		"       ██║   █████╗  ███████╗    ██████╔╝███████╗ ██║██╔██║\n");
+		"       ██║   █████╗  ███████╗    ██║  ██║██║   ██║██║ █╗ ██║██╔██╗ ██║\n");
 	fmt::print(fg(fmt::color::violet),
-		"       ██║   ██╔══╝  ╚════██║    ██╔══██╗██╔═══██╗████╔╝██║\n");
+		"       ██║   ██╔══╝  ╚════██║    ██║  ██║██║   ██║██║███╗██║██║╚██╗██║\n");
 	fmt::print(cyan_b,
-		"       ██║   ██║     ███████║    ██████╔╝╚██████╔╝╚██████╔╝\n");
+		"       ██║   ██║     ███████║    ██████╔╝╚██████╔╝╚███╔███╔╝██║ ╚████║\n");
 	fmt::print(fg(fmt::color::dark_cyan),
-		"       ╚═╝   ╚═╝     ╚══════╝    ╚═════╝  ╚═════╝  ╚═════╝ \n");
+		"       ╚═╝   ╚═╝     ╚══════╝    ╚═════╝  ╚═════╝  ╚══╝╚══╝ ╚═╝  ╚═══╝\n");
 	fmt::print("\n");
 
 	// ── Version bar ──
@@ -494,7 +494,7 @@ void printServerVersion()
 	fmt::print(dark_gray, "    ─────────────────────────────────────────────────────────\n");
 
 	// ── Build info section ──
-	fmt::print(cyan_b, "\n    ⚙ BUILD INFO\n");
+	fmt::print(cyan_b, "\n    ⚙  BUILD INFO\n");
 	fmt::print(dark_gray, "    ────────────────────────────────────────\n");
 	fmt::print(gray, "    {:<20}", "Compiler");
 	fmt::print(white_b, "{}\n", BOOST_COMPILER);

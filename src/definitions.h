@@ -4,7 +4,7 @@
 #ifndef FS_DEFINITIONS_H
 #define FS_DEFINITIONS_H
 
-inline constexpr auto STATUS_SERVER_NAME = "Millhiore TFS Downgrade";
+inline constexpr auto STATUS_SERVER_NAME = "TFS Version Downgrade";
 inline constexpr auto STATUS_SERVER_VERSION = "1.8";
 inline constexpr auto STATUS_SERVER_DEVELOPERS = "Mark Samman";
 inline constexpr auto STATUS_SERVER_REPOSITORY = "https://github.com/MillhioreBT/forgottenserver-downgrade";

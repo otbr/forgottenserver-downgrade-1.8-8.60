@@ -490,6 +490,15 @@ bool Spell::playerInstantSpellCheck(Player* player, const Position& toPos)
 		g_game.map.setTile(toPos, std::move(newTile));
 	}
 
+	if (isInstant()) {
+		const InstantSpell* instantSpell = static_cast<const InstantSpell*>(this);
+		if (instantSpell->getBlockWalls() && tile->hasProperty(CONST_PROP_BLOCKPROJECTILE)) {
+			player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
+			g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF, player->getInstanceID());
+			return false;
+		}
+	}
+
 	if (blockingCreature && tile->getBottomVisibleCreature(player) != nullptr) {
 		player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
 		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF, player->getInstanceID());

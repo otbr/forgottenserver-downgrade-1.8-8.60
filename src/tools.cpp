@@ -1139,7 +1139,7 @@ std::string_view getReturnMessage(ReturnValue value)
 			return "Put this object in both hands.";
 
 		case RETURNVALUE_CANONLYUSEONEWEAPON:
-			return "You may only use one weapon.";
+			return "You may only use one weapon. Use a Dual Stone to enable dual wielding.";
 
 		case RETURNVALUE_TOOFARAWAY:
 			return "You are too far away.";

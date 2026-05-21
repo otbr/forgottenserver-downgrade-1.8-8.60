@@ -63,6 +63,12 @@ enum tradestate_t : uint8_t
 	TRADE_TRANSFER,
 };
 
+enum attackHand_t : uint8_t
+{
+	HAND_LEFT,
+	HAND_RIGHT,
+};
+
 struct VIPEntry
 {
 	VIPEntry(uint32_t guid, std::string_view name) : guid{guid}, name{name} {}
@@ -104,6 +110,7 @@ inline constexpr int32_t PLAYER_MAX_BLESSINGS = 5;
 
 inline constexpr int32_t AVATAR_TIMER_STORAGE = 50099;
 inline constexpr int32_t AVATAR_DAMAGE_REDUCTION_PERCENT = 10;
+inline constexpr int32_t DUAL_WIELD_DAMAGE_BOOST_STORAGE = 50001;
 
 class Player final : public Creature, public Cylinder
 {
@@ -612,6 +619,12 @@ public:
 		if (resetAttackSpeedBonus > 0 && baseSpeed > static_cast<uint32_t>(resetAttackSpeedBonus)) {
 			baseSpeed -= static_cast<uint32_t>(resetAttackSpeedBonus);
 		}
+		if (isDualWielding()) {
+			auto rate = getInteger(ConfigManager::DUAL_WIELDING_SPEED_RATE);
+			if (rate > 0) {
+				baseSpeed = (baseSpeed * 100 + rate - 1) / rate;
+			}
+		}
 		if (baseSpeed < 100) {
 			baseSpeed = 100;
 		}
@@ -665,6 +678,21 @@ public:
 	WeaponType_t getWeaponType() const;
 	int32_t getWeaponSkill(const Item* item) const;
 	void getShieldAndWeapon(const Item*& shield, const Item*& weapon) const;
+	bool isDualWielding() const;
+
+	void switchAttackHand() {
+		lastAttackHand = lastAttackHand == HAND_LEFT ? HAND_RIGHT : HAND_LEFT;
+	}
+	slots_t getAttackHand() const {
+		return lastAttackHand == HAND_LEFT ? CONST_SLOT_LEFT : CONST_SLOT_RIGHT;
+	}
+	void switchBlockSkillAdvance() {
+		blockSkillAdvance = !blockSkillAdvance;
+	}
+	bool getBlockSkillAdvance() const {
+		return blockSkillAdvance;
+	}
+	int32_t getDualWieldDamageBoost() const;
 
 	void drainHealth(const std::shared_ptr<Creature>& attacker, int32_t damage) override;
 	void drainMana(const std::shared_ptr<Creature>& attacker, int32_t manaLoss);
@@ -1500,6 +1528,7 @@ private:
 	BlockType_t lastAttackBlockType = BLOCK_NONE;
 	tradestate_t tradeState = TRADE_NONE;
 	fightMode_t fightMode = FIGHTMODE_ATTACK;
+	attackHand_t lastAttackHand = HAND_LEFT;
 	AccountType_t accountType = ACCOUNT_TYPE_NORMAL;
 
 	bool chaseMode = false;
@@ -1514,6 +1543,7 @@ private:
 	bool logoutRequested = false;
 	bool addAttackSkillPoint = false;
 	bool randomizeMount = false;
+	bool blockSkillAdvance = false;
 	bool inventoryAbilities[CONST_SLOT_LAST + 1] = {};
 	bool tokenProtected = false;
 	std::string tokenHash;

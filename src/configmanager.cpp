@@ -432,6 +432,7 @@ bool ConfigManager::load()
 	booleans[Boolean::MODIFY_EXP_IN_K] = getGlobalBoolean(L, "modifyExpInK", false);
 	booleans[Boolean::DEFAULT_HEALTH_DISPLAY_PERCENT] =
 	    asLowerCaseString(getGlobalString(L, "defaultHealthDisplay", "real")) == "percent";
+	booleans[Boolean::ALLOW_DUAL_WIELDING] = getGlobalBoolean(L, "allowDualWielding", false);
 
 	// Admin Config
 	booleans[Boolean::ADMIN_LOCALHOST_ONLY] = getGlobalBoolean(L, "adminLocalhostOnly", true);
@@ -448,6 +449,7 @@ bool ConfigManager::load()
 	strings[String::MOTD] = getGlobalString(L, "motd", "");
 	strings[String::WORLD_TYPE] = getGlobalString(L, "worldType", "pvp");
 	strings[String::NPC_SYSTEM] = getGlobalString(L, "npcSystem", "tfs");
+	strings[String::DUAL_WIELDING_MODE] = getGlobalString(L, "dualWieldingMode", "allweapons");
 
 	Monster::despawnRange = getGlobalInteger(L, "deSpawnRange", 2);
 	Monster::despawnRadius = getGlobalInteger(L, "deSpawnRadius", 50);
@@ -609,6 +611,8 @@ bool ConfigManager::load()
 	integers[Integer::GUILD_WAR_MAX_FRAG_LIMIT] = getGlobalInteger(L, "guildWarMaxFragLimit", 1000);
 	integers[Integer::COMBAT_CHAIN_DELAY] = getGlobalInteger(L, "combatChainDelay", 50);
 	integers[Integer::COMBAT_CHAIN_TARGETS] = getGlobalInteger(L, "combatChainTargets", 5);
+	integers[Integer::DUAL_WIELDING_SPEED_RATE] = getGlobalInteger(L, "dualWieldingSpeedRate", 200);
+	integers[Integer::DUAL_WIELDING_DAMAGE_RATE] = getGlobalInteger(L, "dualWieldingDamageRate", 60);
 	booleans[Boolean::GUILD_WAR_ANNOUNCE_KILLS] = getGlobalBoolean(L, "guildWarAnnounceKills", true);
 
 	strings[String::ADMIN_PASSWORD] = getGlobalString(L, "adminPassword", "");

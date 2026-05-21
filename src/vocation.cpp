@@ -72,6 +72,8 @@ bool Vocations::loadFromXml()
 				voc.noPongKickTime = pugi::cast<uint32_t>(attrNode.value()) * 1000;
 			} else if (caseInsensitiveEqual(attrName, "skillloss") || caseInsensitiveEqual(attrName, "lossskill")) {
 				voc.setLossSkill(attrNode.as_bool());
+			} else if (caseInsensitiveEqual(attrName, "dualwield")) {
+				voc.dualWield = attrNode.as_bool();
 			} else {
 				LOG_WARN(fmt::format("[Notice - Vocations::loadFromXml] Unknown attribute: \"{}\" for vocation: {}", attrName, voc.id));
 			}

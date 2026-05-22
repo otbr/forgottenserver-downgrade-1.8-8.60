@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GPL-2.0 License that can be found in the LICENSE file.
 
 #include "otpch.h"
-#include "kv/kv.hpp"
+#include "kv/kv.h"
 #include "database.h"
 #include "logger.h"
 #include <fmt/format.h>

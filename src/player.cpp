@@ -16,7 +16,7 @@
 #include "iologindata.h"
 #include "instance_utils.h"
 #include "inbox.h"
-#include "kv/kv.hpp"
+#include "kv/kv.h"
 #include "monster.h"
 #include "movement.h"
 #include "npc.h"

@@ -14,7 +14,7 @@
 #include "events.h"
 #include "game.h"
 #include "housetile.h"
-#include "kv/kv.hpp"
+#include "kv/kv.h"
 #include "luavariant.h"
 #include "matrixarea.h"
 #include "monster.h"

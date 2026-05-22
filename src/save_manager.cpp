@@ -11,7 +11,7 @@
 #include "iomapserialize.h"
 #include "logger.h"
 #include "thread_pool.h"
-#include "kv/kv.hpp"
+#include "kv/kv.h"
 
 extern Game g_game;
 

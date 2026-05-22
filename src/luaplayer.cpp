@@ -18,7 +18,7 @@
 #include "tile.h"
 #include "vocation.h"
 #include "familiar.h"
-#include "kv/kv.hpp"
+#include "kv/kv.h"
 
 extern Game g_game;
 extern Vocations g_vocations;

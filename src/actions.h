@@ -90,8 +90,8 @@ public:
 	Actions(const Actions&) = delete;
 	Actions& operator=(const Actions&) = delete;
 
-	bool useItem(Player*, const Position&, uint8_t, std::shared_ptr<Item>, bool);
-	bool useItemEx(Player*, const Position&, const Position&, uint8_t, std::shared_ptr<Item>, bool,
+	bool useItem(Player*, const Position&, uint8_t, const std::shared_ptr<Item>&, bool);
+	bool useItemEx(Player*, const Position&, const Position&, uint8_t, const std::shared_ptr<Item>&, bool,
 	               Creature* = nullptr);
 
 	ReturnValue canUse(const Player* player, const Position& pos);

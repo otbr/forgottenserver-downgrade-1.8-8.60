@@ -91,6 +91,7 @@ itemAttrTypes stringToItemAttribute(std::string_view str);
 
 std::string_view getReturnMessage(ReturnValue value);
 
+void UPDATE_OTSYS_TIME();
 int64_t OTSYS_TIME();
 int64_t OTSYS_NANOTIME();
 

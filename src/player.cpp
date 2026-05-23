@@ -1082,7 +1082,26 @@ uint16_t Player::getLookCorpse() const
 
 void Player::setStorageValue(const uint32_t key, const std::optional<int64_t> value, const bool isSpawn /* = false*/)
 {
+	const auto oldValue = getStorageValue(key);
 	Creature::setStorageValue(key, value, isSpawn);
+
+	if (isSpawn || oldValue == getStorageValue(key)) {
+		return;
+	}
+
+	if (value && value.value() != -1) {
+		removedStorageKeys.erase(key);
+		modifiedStorageKeys.insert(key);
+	} else {
+		modifiedStorageKeys.erase(key);
+		removedStorageKeys.insert(key);
+	}
+}
+
+void Player::clearStorageDirty()
+{
+	modifiedStorageKeys.clear();
+	removedStorageKeys.clear();
 }
 
 bool Player::canSee(const Position& pos) const
@@ -6123,7 +6142,7 @@ void Player::removeItemImbuements(Item* item, slots_t slot) {
 	sendStats();
 }
 
-void Player::removeImbuementEffect(std::shared_ptr<Imbuement> imbue) {
+void Player::removeImbuementEffect(const std::shared_ptr<Imbuement>& imbue) {
 
 
 	if (imbue->isSkill()) {
@@ -6196,7 +6215,7 @@ void Player::removeImbuementEffect(std::shared_ptr<Imbuement> imbue) {
 	sendStats();
 }
 
-void Player::addImbuementEffect(std::shared_ptr<Imbuement> imbue) {
+void Player::addImbuementEffect(const std::shared_ptr<Imbuement>& imbue) {
 
 
 	if (imbue->isSkill()) {

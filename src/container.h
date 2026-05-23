@@ -15,6 +15,7 @@ class DepotChest;
 class DepotLocker;
 class RewardChest;
 class StoreInbox;
+class Player;
 
 using ContainerQueue = std::queue<const Container*>;
 
@@ -142,6 +143,7 @@ private:
 	void onAddContainerItem(Item* item) const;
 	void onUpdateContainerItem(uint32_t index, Item* oldItem, Item* newItem) const;
 	void onRemoveContainerItem(uint32_t index, Item* item) const;
+	std::shared_ptr<Player> getHoldingPlayerForNotification() const;
 
 	void updateItemWeight(int32_t diff);
 	bool hasCapacityLimit() const;

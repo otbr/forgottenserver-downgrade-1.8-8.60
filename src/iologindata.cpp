@@ -1256,20 +1256,49 @@ bool IOLoginData::savePlayer(Player* player)
 
 	{
 		AutoStat statStorage("savePlayer", "storage");
-		if (!db.executeQuery(fmt::format("DELETE FROM `player_storage` WHERE `player_id` = {:d}", player->getGUID()))) {
-			return false;
-		}
+		if (player->hasStorageDirty()) {
+			const uint32_t playerId = player->getGUID();
+			const auto& removedStorageKeys = player->getRemovedStorageKeys();
+			if (!removedStorageKeys.empty()) {
+				std::ostringstream deleteQuery;
+				deleteQuery << "DELETE FROM `player_storage` WHERE `player_id` = " << playerId << " AND `key` IN (";
 
-		DBInsert storageQuery("INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ");
+				bool first = true;
+				for (const uint32_t key : removedStorageKeys) {
+					if (!first) {
+						deleteQuery << ',';
+					}
+					first = false;
+					deleteQuery << key;
+				}
+				deleteQuery << ')';
 
-		for (const auto& [key, value] : player->getStorageMap()) {
-			if (!storageQuery.addRow(fmt::format("{:d}, {:d}, {:d}", player->getGUID(), key, value))) {
-				return false;
+				if (!db.executeQuery(deleteQuery.str())) {
+					return false;
+				}
 			}
-		}
 
-		if (!storageQuery.execute()) {
-			return false;
+			const auto& modifiedStorageKeys = player->getModifiedStorageKeys();
+			if (!modifiedStorageKeys.empty()) {
+				DBInsert storageQuery("INSERT INTO `player_storage` (`player_id`, `key`, `value`) VALUES ");
+				storageQuery.upsert(std::vector<std::string>{"value"});
+
+				const auto& storageMap = player->getStorageMap();
+				for (const uint32_t key : modifiedStorageKeys) {
+					const auto it = storageMap.find(key);
+					if (it == storageMap.end()) {
+						continue;
+					}
+
+					if (!storageQuery.addRow(fmt::format("{:d}, {:d}, {:d}", playerId, key, it->second))) {
+						return false;
+					}
+				}
+
+				if (!storageQuery.execute()) {
+					return false;
+				}
+			}
 		}
 	}
 
@@ -1315,7 +1344,12 @@ bool IOLoginData::savePlayer(Player* player)
 
 	// End the transaction
 	AutoStat statCommit("savePlayer", "commit");
-	return transaction.commit();
+	if (!transaction.commit()) {
+		return false;
+	}
+
+	player->clearStorageDirty();
+	return true;
 }
 
 bool IOLoginData::loadAutoLootConfig(Player* player)

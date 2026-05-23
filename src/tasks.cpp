@@ -9,6 +9,7 @@
 #include "game.h"
 #include "logger.h"
 #include "configmanager.h"
+#include "tools.h"
 
 extern Game g_game;
 
@@ -32,6 +33,7 @@ void Dispatcher::threadMain()
 {
     // Capture thread ID for isDispatcherThread() checks
     threadId = std::this_thread::get_id();
+    UPDATE_OTSYS_TIME();
 
     std::vector<std::unique_ptr<Task>> tmpTaskList;
     tmpTaskList.reserve(128);
@@ -67,6 +69,8 @@ void Dispatcher::threadMain()
             // consume extra signals
         }
 
+        UPDATE_OTSYS_TIME();
+
         // Critical section: move tasks to the temporary list
         {
             std::scoped_lock lockGuard(taskLock);
@@ -77,6 +81,7 @@ void Dispatcher::threadMain()
 
         // Process all available tasks
         for (auto& task : tmpTaskList) {
+            UPDATE_OTSYS_TIME();
 #if defined(STATS_ENABLED) || defined(SLOW_TASK_DETECTION)
             auto taskStart = std::chrono::steady_clock::now();
 #endif

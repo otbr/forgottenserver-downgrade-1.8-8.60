@@ -386,7 +386,7 @@ static void showUseHotkeyMessage(Player* player, const Item* item, uint32_t coun
 	}
 }
 
-bool Actions::useItem(Player* player, const Position& pos, uint8_t index, std::shared_ptr<Item> item, bool isHotkey)
+bool Actions::useItem(Player* player, const Position& pos, uint8_t index, const std::shared_ptr<Item>& item, bool isHotkey)
 {
 	if (!item) [[unlikely]] {
 		return false;
@@ -447,7 +447,7 @@ bool Actions::useItem(Player* player, const Position& pos, uint8_t index, std::s
 }
 
 bool Actions::useItemEx(Player* player, const Position& fromPos, const Position& toPos, uint8_t toStackPos,
-                        std::shared_ptr<Item> item, bool isHotkey, Creature* creature /* = nullptr*/)
+                        const std::shared_ptr<Item>& item, bool isHotkey, Creature* creature /* = nullptr*/)
 {
 	if (!item) [[unlikely]] {
 		return false;

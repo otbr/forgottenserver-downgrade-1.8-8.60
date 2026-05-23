@@ -220,8 +220,42 @@ bool Container::isHoldingItem(const Item* item) const
 	return false;
 }
 
+std::shared_ptr<Player> Container::getHoldingPlayerForNotification() const
+{
+	Cylinder* cylinder = getParent();
+	Cylinder* topParent = nullptr;
+	while (cylinder && cylinder->getParent() != nullptr) {
+		topParent = cylinder;
+		cylinder = cylinder->getParent();
+	}
+
+	if (!topParent) {
+		topParent = cylinder;
+	}
+
+	if (!topParent) {
+		return nullptr;
+	}
+
+	if (Creature* creature = topParent->getCreature()) {
+		Player* player = creature->getPlayer();
+		if (!player) {
+			return nullptr;
+		}
+
+		return std::static_pointer_cast<Player>(player->weak_from_this().lock());
+	}
+	return nullptr;
+}
+
 void Container::onAddContainerItem(Item* item) const
 {
+	if (auto player = getHoldingPlayerForNotification()) {
+		player->sendAddContainerItem(this, item);
+		player->onAddContainerItem(item);
+		return;
+	}
+
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	spectators.partitionByType();
@@ -239,6 +273,12 @@ void Container::onAddContainerItem(Item* item) const
 
 void Container::onUpdateContainerItem(uint32_t index, Item* oldItem, Item* newItem) const
 {
+	if (auto player = getHoldingPlayerForNotification()) {
+		player->sendUpdateContainerItem(this, static_cast<uint16_t>(index), newItem);
+		player->onUpdateContainerItem(this, oldItem, newItem);
+		return;
+	}
+
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	spectators.partitionByType();
@@ -256,6 +296,12 @@ void Container::onUpdateContainerItem(uint32_t index, Item* oldItem, Item* newIt
 
 void Container::onRemoveContainerItem(uint32_t index, Item* item) const
 {
+	if (auto player = getHoldingPlayerForNotification()) {
+		player->sendRemoveContainerItem(this, static_cast<uint16_t>(index));
+		player->onRemoveContainerItem(this, item);
+		return;
+	}
+
 	SpectatorVec spectators;
 	g_game.map.getSpectators(spectators, getPosition(), false, true, 1, 1, 1, 1);
 	spectators.partitionByType();

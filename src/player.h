@@ -386,6 +386,10 @@ public:
 	bool canOpenCorpse(uint32_t ownerId) const;
 
 	void setStorageValue(const uint32_t key, const std::optional<int64_t> value, const bool isSpawn = false) override;
+	const std::unordered_set<uint32_t>& getModifiedStorageKeys() const { return modifiedStorageKeys; }
+	const std::unordered_set<uint32_t>& getRemovedStorageKeys() const { return removedStorageKeys; }
+	bool hasStorageDirty() const { return !modifiedStorageKeys.empty() || !removedStorageKeys.empty(); }
+	void clearStorageDirty();
 
 	void setGroup(const std::shared_ptr<Group>& newGroup) { group = newGroup; }
 	Group* getGroup() const { return group.get(); }
@@ -1255,8 +1259,8 @@ public:
 	void updateRegeneration();
 	void addItemImbuements(Item* item, slots_t slot);
 	void removeItemImbuements(Item* item, slots_t slot);
-	void removeImbuementEffect(std::shared_ptr<Imbuement> imbue);
-	void addImbuementEffect(std::shared_ptr<Imbuement> imbue);
+	void removeImbuementEffect(const std::shared_ptr<Imbuement>& imbue);
+	void addImbuementEffect(const std::shared_ptr<Imbuement>& imbue);
 
 	const std::unordered_map<uint8_t, OpenContainer>& getOpenContainers() const { return openContainers; }
 
@@ -1403,6 +1407,8 @@ private:
 
 	std::unordered_set<uint32_t> attackedSet;
 	std::unordered_set<uint32_t> VIPList;
+	std::unordered_set<uint32_t> modifiedStorageKeys;
+	std::unordered_set<uint32_t> removedStorageKeys;
 	std::unordered_map<std::string, PreyCombatBonus> preyCombatBonuses;
 
 	std::unordered_map<uint8_t, OpenContainer> openContainers;

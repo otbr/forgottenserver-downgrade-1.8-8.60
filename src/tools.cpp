@@ -1381,10 +1381,25 @@ std::string_view getReturnMessage(ReturnValue value)
 	}
 }
 
-int64_t OTSYS_TIME()
+namespace {
+int64_t currentSteadyMilliseconds()
 {
 	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
 	    .count();
+}
+
+std::atomic<int64_t> g_cachedOtsysTime{0};
+} // namespace
+
+void UPDATE_OTSYS_TIME()
+{
+	g_cachedOtsysTime.store(currentSteadyMilliseconds(), std::memory_order_relaxed);
+}
+
+int64_t OTSYS_TIME()
+{
+	const int64_t cachedTime = g_cachedOtsysTime.load(std::memory_order_relaxed);
+	return cachedTime != 0 ? cachedTime : currentSteadyMilliseconds();
 }
 
 int64_t OTSYS_NANOTIME()

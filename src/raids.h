@@ -25,6 +25,16 @@ struct MonsterSpawn
 	uint32_t maxAmount;
 };
 
+struct RaidSpawnRecord
+{
+	RaidSpawnRecord(std::string_view monsterName, const Position& position) :
+	    monsterName{monsterName}, position{position}
+	{}
+
+	std::string monsterName;
+	Position position;
+};
+
 // How many times it will try to find a tile to add the monster to before giving up
 inline constexpr int32_t MAXIMUM_TRIES_PER_MONSTER = 10;
 inline constexpr int32_t CHECK_RAIDS_INTERVAL = 60;
@@ -68,7 +78,7 @@ public:
 private:
 	LuaScriptInterface scriptInterface{"Raid Interface"};
 
-	std::list<std::unique_ptr<Raid>> raidList;
+	std::list<std::shared_ptr<Raid>> raidList;
 	Raid* running = nullptr; // non-owning
 	uint64_t lastRaidEnd = 0;
 	uint32_t checkRaidsEvent = 0;
@@ -76,11 +86,11 @@ private:
 	bool started = false;
 };
 
-class Raid
+class Raid : public std::enable_shared_from_this<Raid>
 {
 public:
-	Raid(std::string_view name, uint32_t interval, uint32_t marginTime, bool repeat) :
-	    name{name}, interval{interval}, margin{marginTime}, repeat{repeat}
+	Raid(std::string_view name, uint32_t interval, uint32_t marginTime, bool repeat, std::string_view spawnFile) :
+	    name{name}, spawnFile{spawnFile}, interval{interval}, margin{marginTime}, repeat{repeat}
 	{}
 	~Raid();
 
@@ -90,7 +100,7 @@ public:
 
 	bool loadFromXml(const std::string& filename);
 
-	void startRaid();
+	void startRaid(bool markExecutedAfterExecution = false);
 
 	void executeRaidEvent(RaidEvent* raidEvent);
 	void resetRaid();
@@ -103,12 +113,19 @@ public:
 	uint64_t getMargin() const { return margin; }
 	uint32_t getInterval() const { return interval; }
 	bool canBeRepeated() const { return repeat; }
+	bool hasExecuted() const { return executed; }
+
+	void recordSpawn(std::string_view monsterName, const Position& position);
 
 	void stopEvents();
 
 private:
+	bool saveSpawnFile() const;
+
 	std::vector<std::unique_ptr<RaidEvent>> raidEvents;
+	std::vector<RaidSpawnRecord> spawnRecords;
 	std::string name;
+	std::string spawnFile;
 	uint32_t interval;
 	uint32_t nextEvent = 0;
 	uint64_t margin;
@@ -116,6 +133,8 @@ private:
 	uint32_t nextEventEvent = 0;
 	bool loaded = false;
 	bool repeat;
+	bool executed = false;
+	bool markExecutedAfterExecution = false;
 };
 
 class RaidEvent
@@ -128,7 +147,11 @@ public:
 	virtual bool executeEvent() = 0;
 	uint32_t getDelay() const { return delay; }
 
+	void setRaid(Raid* newRaid) { raid = newRaid; }
+	Raid* getRaid() const { return raid; }
+
 private:
+	Raid* raid = nullptr; // non-owning
 	uint32_t delay;
 };
 

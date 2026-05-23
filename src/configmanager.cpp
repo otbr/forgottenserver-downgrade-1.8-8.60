@@ -433,6 +433,7 @@ bool ConfigManager::load()
 	booleans[Boolean::DEFAULT_HEALTH_DISPLAY_PERCENT] =
 	    asLowerCaseString(getGlobalString(L, "defaultHealthDisplay", "real")) == "percent";
 	booleans[Boolean::ALLOW_DUAL_WIELDING] = getGlobalBoolean(L, "allowDualWielding", false);
+	booleans[Boolean::RAID_SPAWN_FILE_ENABLED] = getGlobalBoolean(L, "raidSpawnFileEnabled", true);
 
 	// Admin Config
 	booleans[Boolean::ADMIN_LOCALHOST_ONLY] = getGlobalBoolean(L, "adminLocalhostOnly", true);
@@ -450,6 +451,7 @@ bool ConfigManager::load()
 	strings[String::WORLD_TYPE] = getGlobalString(L, "worldType", "pvp");
 	strings[String::NPC_SYSTEM] = getGlobalString(L, "npcSystem", "tfs");
 	strings[String::DUAL_WIELDING_MODE] = getGlobalString(L, "dualWieldingMode", "allweapons");
+	strings[String::RAID_SPAWNFILE_DIRECTORY] = getGlobalString(L, "raidSpawnFileDirectory", "data/raids");
 
 	Monster::despawnRange = getGlobalInteger(L, "deSpawnRange", 2);
 	Monster::despawnRadius = getGlobalInteger(L, "deSpawnRadius", 50);
@@ -614,6 +616,11 @@ bool ConfigManager::load()
 	integers[Integer::DUAL_WIELDING_SPEED_RATE] = getGlobalInteger(L, "dualWieldingSpeedRate", 200);
 	integers[Integer::DUAL_WIELDING_DAMAGE_RATE] = getGlobalInteger(L, "dualWieldingDamageRate", 60);
 	booleans[Boolean::GUILD_WAR_ANNOUNCE_KILLS] = getGlobalBoolean(L, "guildWarAnnounceKills", true);
+
+	// Raid Spawn Config
+	integers[Integer::RAID_SPAWN_FILE_SPAWNTIME] = getGlobalInteger(L, "raidSpawnFileSpawntime", 60);
+	integers[Integer::RAID_SPAWN_FILE_RADIUS] = getGlobalInteger(L, "raidSpawnFileRadius", 1);
+	integers[Integer::RAID_SPAWN_FILE_DIRECTION] = getGlobalInteger(L, "raidSpawnFileDirection", 2);
 
 	strings[String::ADMIN_PASSWORD] = getGlobalString(L, "adminPassword", "");
 	strings[String::ADMIN_ENCRYPTION] = getGlobalString(L, "adminEncryption", "");

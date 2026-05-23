@@ -20,3 +20,15 @@ modifyDamageInK = false
 modifyExpInK = false
 defaultExpColor = "white"
 defaultHealthDisplay = "real"
+
+-- Raid spawn file generation
+-- When a raid in data/raids/raids.xml has spawnFile="file.xml", successful
+-- singlespawn/areaspawn monsters are exported to data/raids/file.xml.
+-- spawntime value written to each generated <monster> node, in seconds.
+-- Monsters created within this radius on the same floor are grouped into the same spawn block using x/y offsets.
+-- Direction values: 0 = north, 1 = east, 2 = south, 3 = west.
+raidSpawnFileEnabled = true
+raidSpawnFileDirectory = "data/raids"
+raidSpawnFileSpawntime = 60
+raidSpawnFileRadius = 1
+raidSpawnFileDirection = 2

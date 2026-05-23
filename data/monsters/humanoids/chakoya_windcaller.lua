@@ -90,7 +90,7 @@ monster.loot = {
 
 monster.attacks = {
 	{ name = "melee", interval = 2000, chance = 100, minDamage = 0, maxDamage = -22 },
-	{ name = "combat", interval = 2000, chance = 15, type = COMBAT_ICEDAMAGE, minDamage = -16, maxDamage = -32, range = 7, shootEffect = CONST_ANI_ICE, target = false },
+	{ name = "combat", interval = 2000, chance = 15, type = COMBAT_ICEDAMAGE, minDamage = -16, maxDamage = -32, range = 7, shootEffect = CONST_ANI_ICE, target = true },
 	-- freeze
 	{ name = "condition", interval = 2000, chance = 10, target = false, condition =
 	{ type = CONDITION_FREEZING, minDamage = -130, maxDamage = -160, radius = 3, effect = CONST_ME_ICEAREA } },

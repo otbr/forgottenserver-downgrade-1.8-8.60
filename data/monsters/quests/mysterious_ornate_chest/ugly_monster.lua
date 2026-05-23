@@ -74,8 +74,8 @@ monster.loot = {
 
 monster.attacks = {
 	{ name = "melee", interval = 2000, chance = 100, minDamage = 0, maxDamage = -120 },
-	{ name = "outfit", interval = 2000, chance = 10, range = 5, shootEffect = CONST_ANI_EARTH, target = false, duration = 10000, outfitMonster = "Ugly Monster" },
-	{ name = "drunk", interval = 2000, chance = 10, range = 5, shootEffect = CONST_ANI_EARTH, target = false, duration = 5000 },
+	{ name = "outfit", interval = 2000, chance = 10, range = 5, shootEffect = CONST_ANI_EARTH, target = true, duration = 10000, outfitMonster = "Ugly Monster" },
+	{ name = "drunk", interval = 2000, chance = 10, range = 5, shootEffect = CONST_ANI_EARTH, target = true, duration = 5000 },
 }
 
 monster.defenses = {

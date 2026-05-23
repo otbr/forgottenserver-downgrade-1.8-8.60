@@ -60,7 +60,7 @@ monster.voices = {
 monster.loot = {}
 
 monster.attacks = {
-	{ name = "combat", interval = 2000, chance = 50, type = COMBAT_ENERGYDAMAGE, minDamage = -150, maxDamage = -250, range = 1, shootEffect = CONST_ANI_ENERGY, target = false },
+	{ name = "combat", interval = 2000, chance = 50, type = COMBAT_ENERGYDAMAGE, minDamage = -150, maxDamage = -250, range = 1, shootEffect = CONST_ANI_ENERGY, target = true },
 }
 
 monster.defenses = {

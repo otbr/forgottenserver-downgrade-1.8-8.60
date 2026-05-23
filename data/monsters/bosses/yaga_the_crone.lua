@@ -87,11 +87,11 @@ monster.loot = {
 
 monster.attacks = {
 	{ name = "melee", interval = 2000, chance = 100, minDamage = 0, maxDamage = -50 },
-	{ name = "combat", interval = 2500, chance = 50, type = COMBAT_FIREDAMAGE, minDamage = -30, maxDamage = -50, range = 5, shootEffect = CONST_ANI_FIRE, effect = CONST_ME_HITBYFIRE, target = false },
+	{ name = "combat", interval = 2500, chance = 50, type = COMBAT_FIREDAMAGE, minDamage = -30, maxDamage = -50, range = 5, shootEffect = CONST_ANI_FIRE, effect = CONST_ME_HITBYFIRE, target = true },
 	-- poison
 	{ name = "condition", interval = 3000, chance = 13, target = false, condition =
 	{ type = CONDITION_POISON, minDamage = -10, maxDamage = -10, range = 5, shootEffect = CONST_ANI_POISON } },
-	{ name = "firefield", interval = 2000, chance = 13, range = 5, shootEffect = CONST_ANI_FIRE, target = false },
+	{ name = "firefield", interval = 2000, chance = 13, range = 5, shootEffect = CONST_ANI_FIRE, target = true },
 }
 
 monster.defenses = {

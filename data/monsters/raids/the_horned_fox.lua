@@ -99,7 +99,7 @@ monster.loot = {
 
 monster.attacks = {
 	{ name = "melee", interval = 2000, chance = 100, minDamage = 0, maxDamage = -525 },
-	{ name = "combat", interval = 1000, chance = 25, type = COMBAT_PHYSICALDAMAGE, minDamage = 0, maxDamage = -20, range = 7, shootEffect = CONST_ANI_BOLT, target = false },
+	{ name = "combat", interval = 1000, chance = 25, type = COMBAT_PHYSICALDAMAGE, minDamage = 0, maxDamage = -20, range = 7, shootEffect = CONST_ANI_BOLT, target = true },
 	-- poison
 	{ name = "condition", interval = 1000, chance = 40, target = false, condition =
 	{ type = CONDITION_POISON, minDamage = -10, maxDamage = -200, range = 10, shootEffect = CONST_ANI_POISON } },

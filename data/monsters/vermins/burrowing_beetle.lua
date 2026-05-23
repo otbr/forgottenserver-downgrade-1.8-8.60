@@ -64,7 +64,7 @@ monster.loot = {}
 
 monster.attacks = {
 	{ name = "melee", interval = 2000, chance = 100, minDamage = 0, maxDamage = -95 },
-	{ name = "combat", interval = 2000, chance = 10, type = COMBAT_EARTHDAMAGE, minDamage = 0, maxDamage = -45, range = 1, shootEffect = CONST_ANI_POISON, target = false },
+	{ name = "combat", interval = 2000, chance = 10, type = COMBAT_EARTHDAMAGE, minDamage = 0, maxDamage = -45, range = 1, shootEffect = CONST_ANI_POISON, target = true },
 	{ name = "poisonfield", interval = 2000, chance = 10, radius = 1, target = false },
 }
 

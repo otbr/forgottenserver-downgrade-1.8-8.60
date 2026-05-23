@@ -64,8 +64,8 @@ monster.loot = {}
 
 monster.attacks = {
 	{ name = "melee", interval = 2000, chance = 100, minDamage = 0, maxDamage = -600 },
-	{ name = "combat", interval = 1000, chance = 40, type = COMBAT_PHYSICALDAMAGE, minDamage = -0, maxDamage = -350, radius = 2, shootEffect = CONST_ANI_SMALLEARTH, effect = CONST_ME_HITBYPOISON, target = false },
-	{ name = "drunk", interval = 1000, chance = 70, range = 7, shootEffect = CONST_ANI_SMALLEARTH, effect = CONST_ME_ENERGYAREA, target = false },
+	{ name = "combat", interval = 1000, chance = 40, type = COMBAT_PHYSICALDAMAGE, minDamage = -0, maxDamage = -350, radius = 2, shootEffect = CONST_ANI_SMALLEARTH, effect = CONST_ME_HITBYPOISON, target = true },
+	{ name = "drunk", interval = 1000, chance = 70, range = 7, shootEffect = CONST_ANI_SMALLEARTH, effect = CONST_ME_ENERGYAREA, target = true },
 }
 
 monster.defenses = {

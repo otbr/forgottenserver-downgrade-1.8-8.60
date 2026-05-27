@@ -5891,26 +5891,29 @@ void Player::lootCorpse(Container* container)
 	bool missingGoldPouchMessageSent = false;
 	bool skipCoinMessageSent = false;
 
-	auto moveAutolootItem = [&](Item* item) {
+	auto moveAutolootItem = [&](Item* item, uint16_t backpackId = 0) {
 		ReturnValue ret;
 		Cylinder* primaryDestination = nullptr;
 		Cylinder* fallbackDestination = nullptr;
 		bool usedGoldPouch = false;
 
-		if (autolootGoldPouchEnabled) {
-			if (!goldPouchDestination) {
-				if (!missingGoldPouchMessageSent) {
-					sendTextMessage(MESSAGE_EVENT_ORANGE, "You need a Gold Pouch to use AutoLoot.");
-					missingGoldPouchMessageSent = true;
-				}
-				return false;
-			}
-
+		if (autolootGoldPouchEnabled && goldPouchDestination) {
 			primaryDestination = goldPouchDestination;
 			fallbackDestination = storeInboxDestination;
 			usedGoldPouch = true;
+		} else if (autolootGoldPouchEnabled && autobankEnabled) {
+			if (!missingGoldPouchMessageSent) {
+				sendTextMessage(MESSAGE_EVENT_ORANGE, "You need a Gold Pouch to use AutoLoot.");
+				missingGoldPouchMessageSent = true;
+			}
+			return false;
 		} else {
-			primaryDestination = this;
+			if (backpackId != 0) {
+				Container* target = findNonEmptyContainer(backpackId);
+				primaryDestination = target ? static_cast<Cylinder*>(target) : static_cast<Cylinder*>(this);
+			} else {
+				primaryDestination = static_cast<Cylinder*>(this);
+			}
 		}
 
 		ret = g_game.internalMoveItem(container, primaryDestination, INDEX_WHEREEVER, item,
@@ -5978,13 +5981,13 @@ void Player::lootCorpse(Container* container)
 					continue;
 				}
 			}
-			if (autobankEnabled) {
+			if (autobankEnabled && autolootConfig.goldEnabled) {
 				moneyItemsToDeposit.emplace_back(item, value);
 				continue;
 			}
 		}
 
-		moveAutolootItem(item);
+		moveAutolootItem(item, pair.second);
 	}
 
 	if (autolootConfig.goldEnabled) {

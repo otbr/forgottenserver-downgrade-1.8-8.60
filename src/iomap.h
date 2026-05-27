@@ -106,8 +106,12 @@ public:
 
         // Also try Canary/Crystal-style monster+npc files
         std::string mapName(getString(ConfigManager::MAP_NAME));
-        map->spawns.loadFromMonsterNpcXml(mapName + "-monster.xml");
-        map->spawns.loadFromMonsterNpcXml(mapName + "-npc.xml");
+        auto worldPath = map->spawnfile.parent_path();
+        if (worldPath.empty()) {
+            worldPath = "data/world";
+        }
+        map->spawns.loadFromMonsterNpcXml((worldPath / (mapName + "-monster.xml")).string());
+        map->spawns.loadFromMonsterNpcXml((worldPath / (mapName + "-npc.xml")).string());
 
         return map->spawns.isStarted() || !map->spawns.getSpawnList().empty() || map->spawns.getNpcCount() > 0;
     }

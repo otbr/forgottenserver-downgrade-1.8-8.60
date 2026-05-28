@@ -112,7 +112,9 @@ find_package(PugiXML CONFIG REQUIRED)
 if (USE_LUAJIT)
     find_package(LuaJIT REQUIRED)
 else ()
-    find_package(Lua "5.5" REQUIRED)
+    set(TFS_LUA_REQUIRED_VERSION "5.5")
+    message(STATUS "LuaJIT disabled; requiring Lua ${TFS_LUA_REQUIRED_VERSION}. See README.md for the manual Lua 5.5 setup.")
+    find_package(Lua "${TFS_LUA_REQUIRED_VERSION}" REQUIRED)
 endif ()
 
 if (APPLE)
@@ -201,6 +203,24 @@ endif()
 if (BUILD_TESTING)
     message(STATUS "Building unit tests")
     enable_testing()
+    add_test(
+        NAME build_source_list_parity
+        COMMAND ${CMAKE_COMMAND}
+            -DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_SOURCE_DIR}/tools/check-source-list-parity.cmake
+    )
+    add_test(
+        NAME check_manual_delete
+        COMMAND ${CMAKE_COMMAND}
+            -DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_SOURCE_DIR}/tools/check-manual-delete.cmake
+    )
+    add_test(
+        NAME check_shared_get_escapes
+        COMMAND ${CMAKE_COMMAND}
+            -DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_SOURCE_DIR}/tools/check-shared-get-escapes.cmake
+    )
 endif()
 
 # Option to disable unity builds

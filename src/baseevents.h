@@ -5,14 +5,10 @@
 #define FS_BASEEVENTS_H
 
 #include "luascript.h"
+#include "observer_ptr.h"
 
 class Event;
 using Event_ptr = std::unique_ptr<Event>;
-
-// Non-owning observer pointer. The LuaScriptInterface lifetime is managed by
-// the owning event registry, not by Event or CallBack instances.
-template <typename T>
-using ObserverPtr = T*;
 
 class Event
 {

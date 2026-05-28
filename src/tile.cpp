@@ -16,10 +16,38 @@
 #include "scriptmanager.h"
 #include "teleport.h"
 #include "trashholder.h"
+#include "logger.h"
 
 #include <algorithm>
 
 extern Game g_game;
+
+namespace {
+
+std::shared_ptr<Creature> getSharedCreature(Creature* creature)
+{
+	return creature ? creature->weak_from_this().lock() : nullptr;
+}
+
+std::shared_ptr<Item> getSharedItem(Item* item)
+{
+	return item ? item->weak_from_this().lock() : nullptr;
+}
+
+void logSharedCreatureLockFailure(std::string_view context, const Creature* creature)
+{
+	LOG_WARN("[Warning - {}] Failed to lock creature shared ownership. creature={}, id={}, name={}", context,
+	         static_cast<const void*>(creature), creature ? creature->getID() : 0,
+	         creature ? std::string_view(creature->getName()) : std::string_view{});
+}
+
+void logSharedItemLockFailure(std::string_view context, const Item* item)
+{
+	LOG_WARN("[Warning - {}] Failed to lock item shared ownership. item={}, id={}", context,
+	         static_cast<const void*>(item), item ? item->getID() : 0);
+}
+
+} // namespace
 
 StaticTile real_nullptr_tile(0xFFFF, 0xFFFF, 0xFF);
 Tile& Tile::nullptr_tile = real_nullptr_tile;
@@ -530,8 +558,9 @@ ReturnValue Tile::queryAdd(int32_t, const Thing& thing, uint32_t, uint32_t flags
 						}
 
 						const Monster* creatureMonster = tileCreature->getMonster();
+						auto creatureMaster = tileCreature->getMaster();
 						if (!creatureMonster || !tileCreature->isPushable() ||
-						    (creatureMonster->isSummon() && creatureMonster->getMaster()->getPlayer())) {
+						    (creatureMonster->isSummon() && creatureMaster && creatureMaster->getPlayer())) {
 							return RETURNVALUE_NOTPOSSIBLE;
 						}
 					}
@@ -882,14 +911,26 @@ void Tile::addThing(int32_t, Thing* thing)
 {
 	Creature* creature = thing->getCreature();
 	if (creature) {
+		auto creatureRef = getSharedCreature(creature);
+		if (!creatureRef) {
+			logSharedCreatureLockFailure("Tile::addThing", creature);
+			return;
+		}
+
 		g_game.map.clearSpectatorCache();
 
 		creature->setParent(this);
 		CreatureVector* creatures = makeCreatures();
-		creatures->insert(creatures->begin(), creature->shared_from_this());
+		creatures->insert(creatures->begin(), std::move(creatureRef));
 	} else {
 		Item* item = thing->getItem();
 		if (item == nullptr) {
+			return /*RETURNVALUE_NOTPOSSIBLE*/;
+		}
+
+		auto itemRef = getSharedItem(item);
+		if (!itemRef) {
+			logSharedItemLockFailure("Tile::addThing", item);
 			return /*RETURNVALUE_NOTPOSSIBLE*/;
 		}
 
@@ -903,7 +944,7 @@ void Tile::addThing(int32_t, Thing* thing)
 		const ItemType& itemType = Item::items[item->getID()];
 		if (itemType.isGroundTile()) {
 			if (ground == nullptr) {
-				ground = item->shared_from_this();
+				ground = itemRef;
 				onAddTileItem(item);
 			} else {
 				const ItemType& oldType = Item::items[ground->getID()];
@@ -911,7 +952,7 @@ void Tile::addThing(int32_t, Thing* thing)
 				auto oldGroundSp = std::move(ground);
 				Item* oldGround = oldGroundSp.get();
 				oldGround->setParent(nullptr);
-				ground = item->shared_from_this();
+				ground = itemRef;
 				resetTileFlags(oldGround);
 				setTileFlags(item);
 				onUpdateTileItem(oldGround, oldType, item, itemType);
@@ -941,7 +982,7 @@ void Tile::addThing(int32_t, Thing* thing)
 				for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it) {
 					// Note: this is different from internalAddThing
 					if (itemType.alwaysOnTopOrder <= Item::items[(*it)->getID()].alwaysOnTopOrder) {
-						items->insert(it, item->shared_from_this());
+						items->insert(it, itemRef);
 						isInserted = true;
 						break;
 					}
@@ -951,7 +992,7 @@ void Tile::addThing(int32_t, Thing* thing)
 			}
 
 			if (!isInserted) {
-				items->push_back(item->shared_from_this());
+				items->push_back(itemRef);
 			}
 
 			onAddTileItem(item);
@@ -981,7 +1022,7 @@ void Tile::addThing(int32_t, Thing* thing)
 			}
 
 			items = makeItemList();
-			items->insert(items->getBeginDownItem(), item->shared_from_this());
+			items->insert(items->getBeginDownItem(), itemRef);
 			items->addDownItemCount(1);
 			onAddTileItem(item);
 		}
@@ -1018,6 +1059,12 @@ void Tile::replaceThing(uint32_t index, Thing* thing)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
+	auto itemRef = getSharedItem(item);
+	if (!itemRef) {
+		logSharedItemLockFailure("Tile::replaceThing", item);
+		return /*RETURNVALUE_NOTPOSSIBLE*/;
+	}
+
 	Item* oldItem = nullptr;
 	std::shared_ptr<Item> oldItemSp;
 	bool isInserted = false;
@@ -1026,7 +1073,7 @@ void Tile::replaceThing(uint32_t index, Thing* thing)
 		if (pos == 0) {
 			oldItem = ground.get();
 			oldItemSp = ground;
-			ground = item->shared_from_this();
+			ground = itemRef;
 			isInserted = true;
 		}
 
@@ -1043,7 +1090,7 @@ void Tile::replaceThing(uint32_t index, Thing* thing)
 			oldItem = it->get();
 			oldItemSp = *it;
 			it = items->erase(it);
-			items->insert(it, item->shared_from_this());
+			items->insert(it, itemRef);
 			isInserted = true;
 		}
 
@@ -1066,7 +1113,7 @@ void Tile::replaceThing(uint32_t index, Thing* thing)
 			oldItem = it->get();
 			oldItemSp = *it;
 			it = items->erase(it);
-			items->insert(it, item->shared_from_this());
+			items->insert(it, itemRef);
 			isInserted = true;
 		}
 	}
@@ -1470,24 +1517,40 @@ void Tile::internalAddThing(Thing* thing) { internalAddThing(0, thing); }
 
 void Tile::internalAddThing(uint32_t, Thing* thing)
 {
-	thing->setParent(this);
+	if (!thing) {
+		return;
+	}
 
 	Creature* creature = thing->getCreature();
 	if (creature) {
+		auto creatureRef = getSharedCreature(creature);
+		if (!creatureRef) {
+			logSharedCreatureLockFailure("Tile::internalAddThing", creature);
+			return;
+		}
+
 		g_game.map.clearSpectatorCache();
 
+		creature->setParent(this);
 		CreatureVector* creatures = makeCreatures();
-		creatures->insert(creatures->begin(), creature->shared_from_this());
+		creatures->insert(creatures->begin(), std::move(creatureRef));
 	} else {
 		Item* item = thing->getItem();
 		if (item == nullptr) {
 			return;
 		}
 
+		auto itemRef = getSharedItem(item);
+		if (!itemRef) {
+			logSharedItemLockFailure("Tile::internalAddThing", item);
+			return;
+		}
+
+		item->setParent(this);
 		const ItemType& itemType = Item::items[item->getID()];
 		if (itemType.isGroundTile()) {
 			if (ground == nullptr) {
-				ground = item->shared_from_this();
+				ground = itemRef;
 				setTileFlags(item);
 			}
 			return;
@@ -1502,17 +1565,17 @@ void Tile::internalAddThing(uint32_t, Thing* thing)
 			bool isInserted = false;
 			for (auto it = items->getBeginTopItem(), end = items->getEndTopItem(); it != end; ++it) {
 				if (Item::items[(*it)->getID()].alwaysOnTopOrder > itemType.alwaysOnTopOrder) {
-					items->insert(it, item->shared_from_this());
+					items->insert(it, itemRef);
 					isInserted = true;
 					break;
 				}
 			}
 
 			if (!isInserted) {
-				items->push_back(item->shared_from_this());
+				items->push_back(itemRef);
 			}
 		} else {
-			items->insert(items->getBeginDownItem(), item->shared_from_this());
+			items->insert(items->getBeginDownItem(), itemRef);
 			items->addDownItemCount(1);
 		}
 

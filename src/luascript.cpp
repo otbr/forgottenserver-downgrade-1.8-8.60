@@ -865,6 +865,27 @@ void Lua::pushVariant(lua_State* L, const LuaVariant& var)
 	setMetatable(L, -1, "Variant");
 }
 
+bool Lua::pushItem(lua_State* L, Item* item)
+{
+	if (!item) {
+		lua_pushnil(L);
+		return false;
+	}
+
+	if (auto itemRef = item->weak_from_this().lock()) {
+		pushSharedPtr(L, std::move(itemRef));
+		setItemMetatable(L, -1, item);
+		return true;
+	}
+
+#ifndef NDEBUG
+	LOG_WARN(fmt::format("[Lua::pushItem] Item has no shared ownership, pushing nil: {}",
+	                     static_cast<const void*>(item)));
+#endif
+	lua_pushnil(L);
+	return false;
+}
+
 void Lua::pushThing(lua_State* L, Thing* thing)
 {
 	if (!thing) {
@@ -877,8 +898,7 @@ void Lua::pushThing(lua_State* L, Thing* thing)
 	}
 
 	if (Item* item = thing->getItem()) {
-		pushSharedPtr(L, item->shared_from_this());
-		setItemMetatable(L, -1, item);
+		pushItem(L, item);
 	} else if (Creature* creature = thing->getCreature()) {
 		pushUserdata<Creature>(L, creature);
 		setCreatureMetatable(L, -1, creature);
@@ -893,8 +913,7 @@ void Lua::pushCylinder(lua_State* L, Cylinder* cylinder)
 		pushUserdata<Creature>(L, creature);
 		setCreatureMetatable(L, -1, creature);
 	} else if (Item* parentItem = cylinder->getItem()) {
-		pushSharedPtr(L, parentItem->shared_from_this());
-		setItemMetatable(L, -1, parentItem);
+		pushItem(L, parentItem);
 	} else if (Tile* tile = cylinder->getTile()) {
 		pushUserdata<Tile>(L, tile);
 		setMetatable(L, -1, "Tile");

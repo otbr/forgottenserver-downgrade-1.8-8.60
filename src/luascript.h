@@ -6,6 +6,8 @@
 
 #include "database.h"
 #include "enums.h"
+#include "logger.h"
+#include "observer_ptr.h"
 #include "position.h"
 #include "spectators.h"
 
@@ -252,10 +254,10 @@ private:
 	using StorageMap = std::unordered_map<uint32_t, int32_t>;
 	using DBResultMap = std::unordered_map<uint32_t, DBResult_ptr>;
 
-	LuaScriptInterface* interface; // non-owning
+	ObserverPtr<LuaScriptInterface> interface;
 
 	// for npc scripts
-	Npc* curNpc = nullptr; // non-owning
+	ObserverPtr<Npc> curNpc = nullptr;
 
 	// temporary item list
 	static std::multimap<ScriptEnvironment*, std::shared_ptr<Item>> tempItems;
@@ -264,7 +266,7 @@ public:
 	static void clearTempItems();
 
 	// local item map
-	std::unordered_map<uint32_t, Item*> localMap; // non-owning: items managed by tempItems (shared_ptr)
+	std::unordered_map<uint32_t, ObserverPtr<Item>> localMap; // items managed by tempItems
 	uint32_t lastUID = std::numeric_limits<uint16_t>::max();
 
 	// script file id
@@ -653,6 +655,7 @@ private:
 
 namespace Lua {
 // push/pop common structures
+bool pushItem(lua_State* L, Item* item);
 void pushThing(lua_State* L, Thing* thing);
 void pushVariant(lua_State* L, const LuaVariant& var);
 void pushString(lua_State* L, std::string_view value);
@@ -1035,12 +1038,26 @@ inline void pushSharedPtr(lua_State* L, T value, int nuvalue = 1)
 }
 
 // Extra
+inline void logSpectatorLockFailure([[maybe_unused]] int32_t arg, [[maybe_unused]] size_t entryIndex,
+                                    [[maybe_unused]] const void* creature)
+{
+#if !defined(NDEBUG) || defined(DEBUG_LOG)
+	LOG_DEBUG("[Lua::getSpectators] Failed to lock spectator shared reference at arg {}, entry {}, pointer {}",
+	          arg, entryIndex, creature);
+#endif
+}
+
 template <class T>
 inline void getSpectators(lua_State* L, int32_t arg, SpectatorVec& spectators)
 {
 	if (isUserdata(L, arg)) {
 		if (T* creature = getUserdata<T>(L, arg)) {
-			spectators.emplace_back(creature->shared_from_this());
+			if (auto creatureRef = creature->weak_from_this().lock()) {
+				spectators.emplace_back(std::move(creatureRef));
+			} else {
+				logSpectatorLockFailure(arg, 0, creature);
+				spectators.emplaceNull();
+			}
 		}
 		return;
 	} else if (!isTable(L, arg)) {
@@ -1048,10 +1065,17 @@ inline void getSpectators(lua_State* L, int32_t arg, SpectatorVec& spectators)
 	}
 
 	lua_pushnil(L);
+	size_t entryIndex = 0;
 	while (lua_next(L, arg) != 0) {
+		++entryIndex;
 		if (isUserdata(L, -1)) {
 			if (T* creature = getUserdata<T>(L, -1)) {
-				spectators.emplace_back(creature->shared_from_this());
+				if (auto creatureRef = creature->weak_from_this().lock()) {
+					spectators.emplace_back(std::move(creatureRef));
+				} else {
+					logSpectatorLockFailure(arg, entryIndex, creature);
+					spectators.emplaceNull();
+				}
 			}
 		}
 		lua_pop(L, 1);

@@ -37,6 +37,32 @@ constexpr uint32_t CHAIN_SYSTEM_STORAGE = 40001;
 
 void trimString(std::string& str) { boost::algorithm::trim(str); }
 
+std::shared_ptr<Item> getSharedItem(Item* item)
+{
+	return item ? item->weak_from_this().lock() : nullptr;
+}
+
+void logSharedItemLockFailure(std::string_view context, const Item* item)
+{
+	LOG_WARN("[Warning - {}] Failed to lock item shared ownership. item={}, id={}", context,
+	         static_cast<const void*>(item), item ? item->getID() : 0);
+}
+
+std::shared_ptr<House> getSharedHouse(House* house)
+{
+	return house ? house->weak_from_this().lock() : nullptr;
+}
+
+std::shared_ptr<Npc> getSharedNpc(Npc* npc)
+{
+	return npc ? std::dynamic_pointer_cast<Npc>(npc->weak_from_this().lock()) : nullptr;
+}
+
+std::shared_ptr<Party> getSharedParty(Party* party)
+{
+	return party ? party->weak_from_this().lock() : nullptr;
+}
+
 // std::string asLowerCaseString(const std::string& str) { return boost::algorithm::to_lower_copy<std::string>(str); }
 
 // void toLowerCaseString(std::string& str) { boost::algorithm::to_lower(str); }
@@ -49,6 +75,28 @@ bool playerIsMonkVocation(const Vocation* vocation)
 uint16_t clampPreyDamagePercent(uint16_t value)
 {
 	return std::min<uint16_t>(value, 100);
+}
+
+bool isMantraCombatType(CombatType_t combatType)
+{
+	switch (combatType) {
+		case COMBAT_ENERGYDAMAGE:
+		case COMBAT_FIREDAMAGE:
+		case COMBAT_EARTHDAMAGE:
+		case COMBAT_ICEDAMAGE:
+			return true;
+		default:
+			return false;
+	}
+}
+
+int16_t getItemTypeMantraValue(const ItemType& itemType, CombatType_t combatType)
+{
+	if (!itemType.abilities) {
+		return 0;
+	}
+
+	return itemType.abilities->mantraAbsorbValue[combatTypeToIndex(combatType)];
 }
 
 bool isDualWieldWeapon(const Item* item)
@@ -215,7 +263,7 @@ Player::~Player()
 
 void Player::setParty(Party* party)
 {
-	this->party = party ? party->shared_from_this() : std::shared_ptr<Party>();
+	this->party = getSharedParty(party);
 }
 
 bool Player::setVocation(uint16_t vocId)
@@ -554,38 +602,34 @@ int32_t Player::getArmor() const
 	return static_cast<int32_t>(armor * vocation->armorMultiplier);
 }
 
-uint16_t Player::getMantraTotal() const
+int32_t Player::getMantraTotal() const
 {
-	int32_t mantra = 0;
-	static constexpr slots_t mantraSlots[] = { CONST_SLOT_HEAD, CONST_SLOT_NECKLACE, CONST_SLOT_ARMOR, CONST_SLOT_LEGS, CONST_SLOT_RING, CONST_SLOT_FEET };
+	int32_t mantraTotal = 0;
+	static constexpr slots_t mantraSlots[] = {CONST_SLOT_HEAD, CONST_SLOT_NECKLACE, CONST_SLOT_ARMOR,
+	                                          CONST_SLOT_LEGS, CONST_SLOT_RING,     CONST_SLOT_FEET};
 	for (const slots_t& slot : mantraSlots) {
 		if (!isItemAbilityEnabled(slot)) {
 			continue;
 		}
 
-		Item* item = inventory[slot].get();
-		if (item) {
-			const ItemType& itemType = Item::items[item->getID()];
-			if (itemType.mantra > 0) {
-				mantra += itemType.mantra;
-			}
+		std::shared_ptr<Item> item = inventory[slot];
+		if (!item) {
+			continue;
 		}
+
+		const ItemType& itemType = Item::items[item->getID()];
+		mantraTotal += getItemTypeMantraValue(itemType, COMBAT_ENERGYDAMAGE);
 	}
 	if (isSerene()) {
-		mantra *= 2;
+		mantraTotal *= 2;
 	}
-	return static_cast<uint16_t>(mantra);
+	return mantraTotal;
 }
 
-int16_t Player::getMantraAbsorbPercent(int16_t mantraAbsorbValue) const
+int16_t Player::getMantraAbsorbPercent(int32_t mantraTotal) const
 {
-	if (mantraAbsorbValue <= 0) {
-		return 0;
-	}
-	if (isSerene()) {
-		mantraAbsorbValue *= 2;
-	}
-	return mantraAbsorbValue;
+	return static_cast<int16_t>(std::clamp<int32_t>(mantraTotal, std::numeric_limits<int16_t>::min(),
+	                                               std::numeric_limits<int16_t>::max()));
 }
 
 float Player::getMitigation() const
@@ -1148,12 +1192,15 @@ bool Player::canSee(const Position& pos) const
 
 bool Player::canSeeCreature(const Creature* creature) const
 {
+	if (!creature) {
+		return false;
+	}
+
 	if (creature == this) {
 		return true;
 	}
 
-	const uint32_t creatureInstanceId = creature->getInstanceID();
-	if (creatureInstanceId != 0 && !compareInstance(creatureInstanceId)) {
+	if (getInstanceID() != creature->getInstanceID()) {
 		return false;
 	}
 
@@ -1171,12 +1218,15 @@ bool Player::canSeeGhostMode(const Creature*) const { return group->access; }
 
 bool Player::canWalkthrough(const Creature* creature) const
 {
+	if (!creature) {
+		return false;
+	}
+
 	if (group->access || creature->isInGhostMode()) {
 		return true;
 	}
 
-	const uint32_t creatureInstanceId = creature->getInstanceID();
-	if (creatureInstanceId != 0 && !compareInstance(creatureInstanceId)) {
+	if (!compareInstance(creature->getInstanceID())) {
 		return true;
 	}
 
@@ -1204,12 +1254,15 @@ bool Player::canWalkthrough(const Creature* creature) const
 
 bool Player::canWalkthroughEx(const Creature* creature) const
 {
+	if (!creature) {
+		return false;
+	}
+
 	if (group->access) {
 		return true;
 	}
 
-	const uint32_t creatureInstanceId = creature->getInstanceID();
-	if (creatureInstanceId != 0 && !compareInstance(creatureInstanceId)) {
+	if (!compareInstance(creature->getInstanceID())) {
 		return true;
 	}
 
@@ -1444,7 +1497,7 @@ void Player::setEditHouse(House* house, uint32_t listId /*= 0*/)
 {
 	windowTextId++;
 	if (house) {
-		editHouse = house->shared_from_this();
+		editHouse = getSharedHouse(house);
 	} else {
 		editHouse.reset();
 	}
@@ -1951,7 +2004,7 @@ void Player::openShopWindow(const std::list<ShopInfo>& shop)
 
 void Player::setShopOwner(Npc* owner, int32_t onBuy, int32_t onSell)
 {
-	shopOwner = owner ? std::dynamic_pointer_cast<Npc>(owner->shared_from_this()) : std::shared_ptr<Npc>();
+	shopOwner = getSharedNpc(owner);
 	purchaseCallback = onBuy;
 	saleCallback = onSell;
 }
@@ -2688,13 +2741,15 @@ BlockType_t Player::blockHit(const std::shared_ptr<Creature>& attacker, CombatTy
 
 	if (!ignoreResistances) {
 		Reflect reflect;
+		const int16_t mantraAbsorbPercent =
+		    origin != ORIGIN_CONDITION && isMantraCombatType(combatType) ? getMantraAbsorbPercent(getMantraTotal()) : 0;
 
 		for (int32_t slot = CONST_SLOT_FIRST; slot <= CONST_SLOT_AMMO; ++slot) {
 			if (!isItemAbilityEnabled(static_cast<slots_t>(slot))) {
 				continue;
 			}
 
-			Item* item = inventory[slot].get();
+			std::shared_ptr<Item> item = inventory[slot];
 			if (!item) {
 				continue;
 			}
@@ -2715,20 +2770,12 @@ BlockType_t Player::blockHit(const std::shared_ptr<Creature>& attacker, CombatTy
 				totalAbsorbPercent += absorbPercent;
 			}
 
-			const int16_t mantraAbsorbValue = it.abilities->mantraAbsorbValue[combatTypeToIndex(combatType)];
-			if (mantraAbsorbValue != 0 && origin != ORIGIN_CONDITION) {
-				const int16_t mantraAbsorbPercent = getMantraAbsorbPercent(mantraAbsorbValue);
-				if (mantraAbsorbPercent != 0) {
-					totalAbsorbPercent += mantraAbsorbPercent;
-				}
-			}
-
 			if (totalAbsorbPercent != 0) {
 				damage -= std::ceil(damage * (totalAbsorbPercent / 100.));
 
 				uint16_t charges = item->getCharges();
 				if (charges != 0) {
-					g_game.transformItem(item, item->getID(), charges - 1);
+					g_game.transformItem(item.get(), item->getID(), charges - 1);
 				}
 			}
 
@@ -2741,7 +2788,7 @@ BlockType_t Player::blockHit(const std::shared_ptr<Creature>& attacker, CombatTy
 
 					uint16_t charges = item->getCharges();
 					if (charges != 0) {
-						g_game.transformItem(item, item->getID(), charges - 1);
+						g_game.transformItem(item.get(), item->getID(), charges - 1);
 					}
 				}
 			}
@@ -2783,6 +2830,10 @@ BlockType_t Player::blockHit(const std::shared_ptr<Creature>& attacker, CombatTy
 					}
 				}
 			}
+		}
+
+		if (mantraAbsorbPercent != 0) {
+			damage -= std::ceil(damage * (mantraAbsorbPercent / 100.));
 		}
 
 		if (attacker && reflect.chance > 0 && reflect.percent != 0 && uniform_random(1, 100) <= reflect.chance) {
@@ -3666,8 +3717,14 @@ void Player::addThing(int32_t index, Thing* thing)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
+	auto itemRef = getSharedItem(item);
+	if (!itemRef) {
+		logSharedItemLockFailure("Player::addThing", item);
+		return /*RETURNVALUE_NOTPOSSIBLE*/;
+	}
+
 	item->setParent(this);
-	inventory[index] = item->shared_from_this();
+	inventory[index] = std::move(itemRef);
 
 	// send to client
 	sendInventoryItem(static_cast<slots_t>(index), item);
@@ -3701,13 +3758,20 @@ void Player::replaceThing(uint32_t index, Thing* thing)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
-	Item* oldItem = getInventoryItem(static_cast<slots_t>(index));
+	std::shared_ptr<Item> oldItemRef = inventory[index];
+	Item* oldItem = oldItemRef.get();
 	if (!oldItem) {
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
 	Item* item = thing->getItem();
 	if (!item) {
+		return /*RETURNVALUE_NOTPOSSIBLE*/;
+	}
+
+	auto itemRef = getSharedItem(item);
+	if (!itemRef) {
+		logSharedItemLockFailure("Player::replaceThing", item);
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
@@ -3719,7 +3783,10 @@ void Player::replaceThing(uint32_t index, Thing* thing)
 
 	item->setParent(this);
 
-	inventory[index] = item->shared_from_this();
+	inventory[index] = std::move(itemRef);
+	if (oldItem != item) {
+		oldItem->setParent(nullptr);
+	}
 }
 
 void Player::removeThing(Thing* thing, uint32_t count)
@@ -4073,7 +4140,13 @@ void Player::internalAddThing(uint32_t index, Thing* thing)
 			return;
 		}
 
-		inventory[index] = item->shared_from_this();
+		auto itemRef = getSharedItem(item);
+		if (!itemRef) {
+			logSharedItemLockFailure("Player::internalAddThing", item);
+			return;
+		}
+
+		inventory[index] = std::move(itemRef);
 		item->setParent(this);
 	}
 }
@@ -5246,7 +5319,12 @@ bool Player::addPartyInvitation(Party* party)
 		}
 	}
 
-	invitePartyList.push_front(party->shared_from_this());
+	auto partyRef = getSharedParty(party);
+	if (!partyRef) {
+		return false;
+	}
+
+	invitePartyList.push_front(std::move(partyRef));
 	return true;
 }
 

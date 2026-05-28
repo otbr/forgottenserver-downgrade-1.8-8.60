@@ -753,7 +753,7 @@ bool Game::placeCreature(Creature* creature, const Position& pos, bool extendedP
 	map.getSpectators(spectators, creature->getPosition(), true);
 	for (const auto& spectator : spectators.players()) {
 		Player* tmpPlayer = static_cast<Player*>(spectator.get());
-		if (!InstanceUtils::isPlayerInSameInstance(tmpPlayer, creature->getInstanceID())) {
+		if (!tmpPlayer->compareInstance(creature->getInstanceID())) {
 			continue;
 		}
 
@@ -763,7 +763,7 @@ bool Game::placeCreature(Creature* creature, const Position& pos, bool extendedP
 	}
 
 	for (const auto& spectator : spectators) {
-		if (!InstanceUtils::isPlayerInSameInstance(spectator.get(), creature->getInstanceID())) {
+		if (!spectator || !spectator->compareInstance(creature->getInstanceID())) {
 			continue;
 		}
 
@@ -817,7 +817,7 @@ bool Game::removeCreature(Creature* creature, bool isLogout /* = true*/)
 
 	// event method
 	for (const auto& spectator : spectators) {
-		if (!InstanceUtils::isPlayerInSameInstance(spectator.get(), creature->getInstanceID())) {
+		if (!spectator || !spectator->compareInstance(creature->getInstanceID())) {
 			continue;
 		}
 
@@ -1669,7 +1669,10 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 
 			if (toCylinder->queryRemove(*toItem, toItem->getItemCount(), flags, actor) == RETURNVALUE_NOERROR) {
 				int32_t oldToItemIndex = toCylinder->getThingIndex(toItem);
-				auto toItemRef = toItem->shared_from_this(); // keep alive during exchange
+				auto toItemRef = getItemSharedRef(toItem); // keep alive during exchange
+				if (!toItemRef) {
+					return RETURNVALUE_NOTPOSSIBLE;
+				}
 				toCylinder->removeThing(toItem, toItem->getItemCount());
 				fromCylinder->addThing(toItem);
 
@@ -1739,7 +1742,10 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 	int32_t itemIndex = fromCylinder->getThingIndex(item);
 	Item* updateItem = nullptr;
 	std::shared_ptr<Item> clonedMoveItem;
-	auto itemRef = item->shared_from_this();
+	auto itemRef = getItemSharedRef(item);
+	if (!itemRef) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
 	fromCylinder->removeThing(item, m);
 
 	// update item(s)
@@ -1951,7 +1957,10 @@ ReturnValue Game::internalRemoveItem(Item* item, int32_t count /*= -1*/, bool te
 	if (!test) {
 		int32_t index = cylinder->getThingIndex(item);
 
-		auto itemRef = item->shared_from_this();
+		auto itemRef = getItemSharedRef(item);
+		if (!itemRef) {
+			return RETURNVALUE_NOTPOSSIBLE;
+		}
 
 		// remove the item
 		cylinder->removeThing(item, count);
@@ -2168,7 +2177,10 @@ Item* Game::transformItem(Item* item, uint16_t newId, int32_t newCount /*= -1*/)
 		return item;
 	}
 
-	auto itemRef = item->shared_from_this();
+	auto itemRef = getItemSharedRef(item);
+	if (!itemRef) {
+		return item;
+	}
 
 	const ItemType& curType = Item::items[item->getID()];
 	if (curType.alwaysOnTop != newType.alwaysOnTop) {
@@ -2730,7 +2742,11 @@ void Game::playerUseItemEx(uint32_t playerId, const Position& fromPos, uint8_t f
 		player->resetIdleTime();
 		player->setNextActionTask(nullptr);
 
-		auto itemRef = item->shared_from_this();
+		auto itemRef = getItemSharedRef(item);
+		if (!itemRef) {
+			player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+			return;
+		}
 		g_actions->useItemEx(player, fromPos, toPos, toStackPos, itemRef, isHotkey);
 		player->maintainAttackFlow();
 		return;
@@ -2799,7 +2815,13 @@ void Game::playerUseItemEx(uint32_t playerId, const Position& fromPos, uint8_t f
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
 
-	g_actions->useItemEx(player, fromPos, toPos, toStackPos, item->shared_from_this(), isHotkey);
+	auto itemRef = getItemSharedRef(item);
+	if (!itemRef) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
+	g_actions->useItemEx(player, fromPos, toPos, toStackPos, itemRef, isHotkey);
 	player->maintainAttackFlow();
 }
 
@@ -2850,7 +2872,11 @@ void Game::playerUseItem(uint32_t playerId, const Position& pos, uint8_t stackPo
 		player->resetIdleTime();
 		player->setNextActionTask(nullptr);
 
-		auto itemRef = item->shared_from_this();
+		auto itemRef = getItemSharedRef(item);
+		if (!itemRef) {
+			player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+			return;
+		}
 		g_actions->useItem(player, pos, index, itemRef, isHotkey);
 		player->maintainAttackFlow();
 
@@ -2911,7 +2937,11 @@ void Game::playerUseItem(uint32_t playerId, const Position& pos, uint8_t stackPo
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
 
-	auto itemRef = item->shared_from_this();
+	auto itemRef = getItemSharedRef(item);
+	if (!itemRef) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
 	g_actions->useItem(player, pos, index, itemRef, isHotkey);
 
 	if (!itemRef->isRemoved() && itemRef->getCorpseOwner() != 0) {
@@ -2951,9 +2981,14 @@ void Game::playerUseWithCreature(uint32_t playerId, const Position& fromPos, uin
 			player->resetIdleTime();
 			player->setNextActionTask(nullptr);
 			bool isHotkey = (fromPos.x == 0xFFFF && fromPos.y == 0 && fromPos.z == 0);
+			auto itemRef = getItemSharedRef(item);
+			if (!itemRef) {
+				player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+				return;
+			}
 			g_actions->useItemEx(player, fromPos, creature->getPosition(),
 			                     static_cast<uint8_t>(creatureParent->getThingIndex(creature)),
-			                     item->shared_from_this(), isHotkey, creature);
+			                     itemRef, isHotkey, creature);
 			player->maintainAttackFlow();
 		} else {
 			player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
@@ -3058,9 +3093,15 @@ void Game::playerUseWithCreature(uint32_t playerId, const Position& fromPos, uin
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
 
+	auto itemRef = getItemSharedRef(item);
+	if (!itemRef) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
 	g_actions->useItemEx(player, fromPos, creature->getPosition(),
 	                     static_cast<uint8_t>(creature->getParent()->getThingIndex(creature)),
-	                     item->shared_from_this(), isHotkey, creature);
+	                     itemRef, isHotkey, creature);
 	player->maintainAttackFlow();
 }
 
@@ -3420,8 +3461,13 @@ bool Game::internalStartTrade(Player* player, Player* tradePartner, Item* tradeI
 		return false;
 	}
 
+	auto tradeItemRef = getItemSharedRef(tradeItem);
+	if (!tradeItemRef) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return false;
+	}
+	player->tradeItem = tradeItemRef;
 	player->setTradePartner(std::static_pointer_cast<Player>(getCreatureSharedRef(tradePartner)));
-	player->tradeItem = tradeItem->shared_from_this();
 	player->tradeState = TRADE_INITIATED;
 	tradeItems[tradeItem->weak_from_this()] = player->getID();
 
@@ -4446,13 +4492,15 @@ bool Game::internalCreatureSay(Creature* creature, SpeakClasses type, std::strin
 		}
 	} else {
 		spectators = (*spectatorsPtr);
-		spectators.partitionByType();
 	}
 
 	// send to client
 	const bool localPositionTalk = isLocalPositionTalk(type);
-	for (const auto& spectator : spectators.players()) {
-		Player* tmpPlayer = static_cast<Player*>(spectator.get());
+	for (const auto& spectator : spectators) {
+		Player* tmpPlayer = spectator ? spectator->getPlayer() : nullptr;
+		if (!tmpPlayer) {
+			continue;
+		}
 		if (localPositionTalk && areDifferentNonZeroInstances(tmpPlayer, creature)) {
 			continue;
 		}
@@ -4464,6 +4512,9 @@ bool Game::internalCreatureSay(Creature* creature, SpeakClasses type, std::strin
 	// event method
 	if (!echo) {
 		for (const auto& spectator : spectators) {
+			if (!spectator) {
+				continue;
+			}
 			if (localPositionTalk && areDifferentNonZeroInstances(spectator.get(), creature)) {
 				continue;
 			}
@@ -4756,7 +4807,15 @@ bool Game::combatBlockHit(CombatDamage& damage, Creature* attacker, Creature* ta
 		return true;
 	}
 
-	auto attackerRef = attacker ? attacker->shared_from_this() : std::shared_ptr<Creature>();
+	std::shared_ptr<Creature> attackerRef;
+	if (attacker) {
+		attackerRef = attacker->weak_from_this().lock();
+		if (!attackerRef) {
+			LOG_ERROR(fmt::format("[Game::combatBlockHit] Failed to lock attacker shared reference: {}",
+			                      static_cast<const void*>(attacker)));
+			return true;
+		}
+	}
 
 	uint32_t targetInstanceId = target->getInstanceID();
 	const auto sendBlockEffect = [targetInstanceId](BlockType_t blockType, CombatType_t combatType,
@@ -5548,7 +5607,15 @@ bool Game::combatChangeMana(Creature* attacker, Creature* target, CombatDamage& 
 		return false;
 	}
 
-	auto attackerRef = attacker ? attacker->shared_from_this() : std::shared_ptr<Creature>();
+	std::shared_ptr<Creature> attackerRef;
+	if (attacker) {
+		attackerRef = attacker->weak_from_this().lock();
+		if (!attackerRef) {
+			LOG_ERROR(fmt::format("[Game::combatChangeMana] Failed to lock attacker shared reference: {}",
+			                      static_cast<const void*>(attacker)));
+			return false;
+		}
+	}
 
 	if (ConfigManager::getBoolean(ConfigManager::MONSTER_LEVEL_ENABLED)) {
 		Monster* monster = attacker ? attacker->getMonster() : nullptr;
@@ -5737,7 +5804,11 @@ void Game::addCreatureHealth(const Creature* target)
 void Game::addCreatureHealth(const SpectatorVec& spectators, const Creature* target)
 {
 	for (const auto& spectator : spectators) {
-		static_cast<Player*>(spectator.get())->sendCreatureHealth(target);
+		Player* player = spectator ? spectator->getPlayer() : nullptr;
+		if (!player) {
+			continue;
+		}
+		player->sendCreatureHealth(target);
 	}
 }
 
@@ -5759,7 +5830,11 @@ void Game::addAnimatedText(const SpectatorVec& spectators, std::string_view mess
                            TextColor_t color)
 {
 	for (const auto& spectator : spectators) {
-		static_cast<Player*>(spectator.get())->sendAnimatedText(message, pos, color);
+		Player* player = spectator ? spectator->getPlayer() : nullptr;
+		if (!player) {
+			continue;
+		}
+		player->sendAnimatedText(message, pos, color);
 	}
 }
 
@@ -5776,7 +5851,11 @@ void Game::addMagicEffect(const Position& pos, uint16_t effect, uint32_t instanc
 void Game::addMagicEffect(const SpectatorVec& spectators, const Position& pos, uint16_t effect)
 {
 	for (const auto& spectator : spectators) {
-		static_cast<Player*>(spectator.get())->sendMagicEffect(pos, effect);
+		Player* player = spectator ? spectator->getPlayer() : nullptr;
+		if (!player) {
+			continue;
+		}
+		player->sendMagicEffect(pos, effect);
 	}
 }
 
@@ -5804,7 +5883,11 @@ void Game::addDistanceEffect(const SpectatorVec& spectators, const Position& fro
                              uint16_t effect)
 {
 	for (const auto& spectator : spectators) {
-		static_cast<Player*>(spectator.get())->sendDistanceShoot(fromPos, toPos, effect);
+		Player* player = spectator ? spectator->getPlayer() : nullptr;
+		if (!player) {
+			continue;
+		}
+		player->sendDistanceShoot(fromPos, toPos, effect);
 	}
 }
 
@@ -5894,10 +5977,15 @@ void Game::startDecay(Item* item)
 	}
 
 	int32_t duration = item->getIntAttr(ITEM_ATTRIBUTE_DURATION);
+	auto itemRef = getItemSharedRef(item);
+	if (!itemRef) {
+		return;
+	}
+
 	if (duration > 0) {
-		g_decay.startDecay(item->shared_from_this(), duration);
+		g_decay.startDecay(std::move(itemRef), duration);
 	} else {
-		internalDecayItem(item->shared_from_this());
+		internalDecayItem(std::move(itemRef));
 	}
 }
 
@@ -5939,6 +6027,11 @@ void Game::stopDecay(Item* item)
 			item->removeAttribute(ITEM_ATTRIBUTE_DECAYSTATE);
 		}
 	}
+}
+
+void Game::stopDecay(const std::shared_ptr<Item>& item)
+{
+	stopDecay(item.get());
 }
 
 void Game::internalDecayItem(std::shared_ptr<Item> item)
@@ -6333,7 +6426,12 @@ void Game::ReleaseCreature(Creature* creature)
 
 void Game::ReleaseCreature(std::shared_ptr<Creature> creature) { ToReleaseCreatures.push_back(std::move(creature)); }
 
-void Game::ReleaseItem(Item* item) { ToReleaseItems.push_back(item->shared_from_this()); }
+void Game::ReleaseItem(Item* item)
+{
+	if (auto itemRef = getItemSharedRef(item)) {
+		ToReleaseItems.push_back(std::move(itemRef));
+	}
+}
 
 void Game::ReleaseItem(std::shared_ptr<Item> item) { ToReleaseItems.push_back(std::move(item)); }
 
@@ -6947,7 +7045,7 @@ void Game::addGuild(Guild_ptr guild)
 
 void Game::removeGuild(uint32_t guildId) { guilds.erase(guildId); }
 
-void Game::internalRemoveItems(std::vector<Item*> itemList, uint32_t amount, bool stackable)
+void Game::internalRemoveItems(std::vector<ObserverPtr<Item>> itemList, uint32_t amount, bool stackable)
 {
 	if (stackable) {
 		for (Item* item : itemList) {
@@ -7271,9 +7369,9 @@ std::optional<int64_t> Game::getStorageValue(uint32_t key) const
 	return std::make_optional(it->second);
 }
 
-std::vector<Player*> Game::getLiveCasters(std::string_view name) const
+std::vector<ObserverPtr<Player>> Game::getLiveCasters(std::string_view name) const
 {
-	std::vector<Player*> casters;
+	std::vector<ObserverPtr<Player>> casters;
 	for (const auto& player : getPlayers()) {
 		if (player && player->client && player->client->isBroadcasting()) {
 			if (name.empty() || boost::algorithm::icontains(player->getName(), name)) {

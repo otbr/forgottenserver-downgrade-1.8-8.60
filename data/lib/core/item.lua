@@ -401,12 +401,12 @@ do
 		do
 			local arm = item:getArmor()
 			local mantra = itemType:getMantra()
-			if arm > 0 or mantra > 0 then
+			if arm > 0 or mantra ~= 0 then
 				local str = ""
 				if arm > 0 then
 					str = fmt("Arm:%d", arm)
 				end
-				if mantra > 0 then
+				if mantra ~= 0 then
 					if str ~= "" then
 						str = str .. " "
 					end

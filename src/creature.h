@@ -8,20 +8,24 @@
 #include "const.h"
 #include "creatureevent.h"
 #include "enums.h"
+#include "logger.h"
 #include "map.h"
+#include "observer_ptr.h"
 #include "position.h"
 #include "tile.h"
 
 #include <absl/container/flat_hash_map.h>
 
+#include <cassert>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 class Creature;
 
 using ConditionList = std::vector<Condition_ptr>;
-using CreatureEventList = std::vector<CreatureEvent*>; // non-owning
+using CreatureEventList = std::vector<ObserverPtr<CreatureEvent>>;
 
 struct CreatureEventRegistration
 {
@@ -107,8 +111,8 @@ public:
 
 	Creature* getCreature() override final { return this; }
 	const Creature* getCreature() const override final { return this; }
-	std::shared_ptr<Creature> asCreature() { return shared_from_this(); }
-	std::shared_ptr<const Creature> asCreature() const { return shared_from_this(); }
+	std::shared_ptr<Creature> asCreature() { return weak_from_this().lock(); }
+	std::shared_ptr<const Creature> asCreature() const { return weak_from_this().lock(); }
 
 	static bool isAlive(const Creature* c) { return liveCreatures.count(c) > 0; }
 	virtual Player* getPlayer() { return nullptr; }
@@ -351,7 +355,15 @@ public:
 	void setParent(Cylinder* cylinder) override final
 	{
 		if (cylinder) {
-			auto t = static_cast<Tile*>(cylinder)->shared_from_this();
+			auto t = static_cast<Tile*>(cylinder)->weak_from_this().lock();
+			if (!t) {
+				LOG_WARN("[Warning - Creature::setParent] Failed to lock tile shared ownership. creature={}, id={}, name={}",
+				         static_cast<const void*>(this), getID(), std::string_view(getName()));
+				assert(false && "Creature::setParent failed to lock tile shared ownership");
+				tile.reset();
+				position = {};
+				return;
+			}
 			position = t->getPosition();
 			tile = t;
 		} else {

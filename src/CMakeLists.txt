@@ -149,6 +149,7 @@ set(tfs_HDR
 	${CMAKE_CURRENT_LIST_DIR}/database.h
 	${CMAKE_CURRENT_LIST_DIR}/databasemanager.h
 	${CMAKE_CURRENT_LIST_DIR}/databasetasks.h
+	${CMAKE_CURRENT_LIST_DIR}/decay.h
 	${CMAKE_CURRENT_LIST_DIR}/definitions.h
 	${CMAKE_CURRENT_LIST_DIR}/depotchest.h
 	${CMAKE_CURRENT_LIST_DIR}/depotlocker.h
@@ -161,6 +162,7 @@ set(tfs_HDR
 	${CMAKE_CURRENT_LIST_DIR}/guild.h
 	${CMAKE_CURRENT_LIST_DIR}/house.h
 	${CMAKE_CURRENT_LIST_DIR}/housetile.h
+	${CMAKE_CURRENT_LIST_DIR}/inbox.h
 	${CMAKE_CURRENT_LIST_DIR}/iologindata.h
 	${CMAKE_CURRENT_LIST_DIR}/imbuement.h
 	${CMAKE_CURRENT_LIST_DIR}/kv/kv.h
@@ -173,6 +175,7 @@ set(tfs_HDR
 	${CMAKE_CURRENT_LIST_DIR}/items.h
 	${CMAKE_CURRENT_LIST_DIR}/lockfree.h
 	${CMAKE_CURRENT_LIST_DIR}/logger.h
+	${CMAKE_CURRENT_LIST_DIR}/observer_ptr.h
 	${CMAKE_CURRENT_LIST_DIR}/luascript.h
 	${CMAKE_CURRENT_LIST_DIR}/familiar.h
 	${CMAKE_CURRENT_LIST_DIR}/luavariant.h
@@ -196,6 +199,7 @@ set(tfs_HDR
 	${CMAKE_CURRENT_LIST_DIR}/protocol.h
 	${CMAKE_CURRENT_LIST_DIR}/protocoladmin.h
 	${CMAKE_CURRENT_LIST_DIR}/protocollogin.h
+	${CMAKE_CURRENT_LIST_DIR}/protocolspectator.h
 	${CMAKE_CURRENT_LIST_DIR}/protocolstatus.h
 	${CMAKE_CURRENT_LIST_DIR}/pugicast.h
 	${CMAKE_CURRENT_LIST_DIR}/raids.h
@@ -212,6 +216,7 @@ set(tfs_HDR
 	${CMAKE_CURRENT_LIST_DIR}/spells.h
 	${CMAKE_CURRENT_LIST_DIR}/storeinbox.h
 	${CMAKE_CURRENT_LIST_DIR}/spy.h
+	${CMAKE_CURRENT_LIST_DIR}/stats.h
 	${CMAKE_CURRENT_LIST_DIR}/talkaction.h
 	${CMAKE_CURRENT_LIST_DIR}/tasks.h
 	${CMAKE_CURRENT_LIST_DIR}/teleport.h

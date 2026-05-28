@@ -22,8 +22,7 @@ int luaItemCreate(lua_State* L)
 
 	Item* item = LuaScriptInterface::getScriptEnv()->getItemByUID(id);
 	if (item) {
-		pushSharedPtr(L, item->shared_from_this());
-		setItemMetatable(L, -1, item);
+		pushItem(L, item);
 	} else {
 		lua_pushnil(L);
 	}
@@ -148,7 +147,7 @@ int luaItemSplit(lua_State* L)
 		env->insertItem(uid, newItem);
 	}
 
-	itemPtr = newItem ? newItem->shared_from_this() : nullptr;
+	itemPtr = newItem ? newItem->weak_from_this().lock() : nullptr;
 
 	splitItem->setParent(VirtualCylinder::virtualCylinder);
 	env->addTempItem(splitItem);
@@ -743,7 +742,7 @@ int luaItemMoveTo(lua_State* L)
 		ReturnValue ret = g_game.internalMoveItem(item->getParent(), toCylinder, INDEX_WHEREEVER, item,
 		                                          item->getItemCount(), &moveItem, flags);
 		if (moveItem) {
-			itemPtr = moveItem->shared_from_this();
+			itemPtr = moveItem->weak_from_this().lock();
 		}
 		pushBoolean(L, ret == RETURNVALUE_NOERROR);
 	}
@@ -799,7 +798,7 @@ int luaItemTransform(lua_State* L)
 		env->insertItem(uid, newItem);
 	}
 
-	itemPtr = newItem ? newItem->shared_from_this() : nullptr;
+	itemPtr = newItem ? newItem->weak_from_this().lock() : nullptr;
 	pushBoolean(L, true);
 	return 1;
 }
@@ -956,8 +955,7 @@ int luaItemGetMagicField(lua_State* L)
 	if (item) {
 		MagicField* field = item->getMagicField();
 		if (field) {
-			pushSharedPtr(L, field->shared_from_this());
-			setItemMetatable(L, -1, field);
+			pushItem(L, field);
 		} else {
 			lua_pushnil(L);
 		}
@@ -973,9 +971,11 @@ int luaItemOnStepInField(lua_State* L)
 	Item* item = getItemUserdata<Item>(L, 1);
 	Creature* creature = getCreature(L, 2);
 	if (item && creature) {
-		MagicField* field = item->getMagicField();
-		if (field) {
-			field->onStepInField(creature);
+		auto itemRef = item->weak_from_this().lock();
+		auto creatureRef = creature->weak_from_this().lock();
+		auto field = std::dynamic_pointer_cast<MagicField>(itemRef);
+		if (field && creatureRef && !field->isRemoved() && !creatureRef->isRemoved()) {
+			field->onStepInField(creatureRef);
 			pushBoolean(L, true);
 		} else {
 			pushBoolean(L, false);

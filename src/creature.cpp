@@ -16,6 +16,15 @@
 
 extern Game g_game;
 
+namespace {
+
+std::shared_ptr<Creature> getSharedCreature(Creature* creature)
+{
+	return creature ? creature->weak_from_this().lock() : nullptr;
+}
+
+} // namespace
+
 std::unordered_set<const Creature*> Creature::liveCreatures;
 
 Creature::Creature()
@@ -88,10 +97,11 @@ bool Creature::canSee(const Position& pos) const
 
 bool Creature::canSeeCreature(const Creature* creature) const
 {
-	// OPTIMIZATION: Only check instances when both creatures actually have
-  	// a non-zero instance ID, avoiding the overhead in the common case.
-  	if (uint32_t theirInstance = creature->getInstanceID();
-    	theirInstance != 0 && !compareInstance(theirInstance)) {
+	if (!creature) {
+		return false;
+	}
+
+	if (getInstanceID() != creature->getInstanceID()) {
 		return false;
 	}
 
@@ -437,12 +447,14 @@ void Creature::onCreatureMove(Creature* creature, const Tile* newTile, const Pos
 
 				const Position& pos = summon->getPosition();
 				if (newPos.getDistanceZ(pos) > 2 || std::max(newPos.getDistanceX(pos), newPos.getDistanceY(pos)) > 30) {
-					// Player-owned summons follow their master instead of being despawned.
-					if (getPlayer()) {
+					const Monster* summonMonster = summon->getMonster();
+					const bool canTeleportPlayerSummon = ConfigManager::getBoolean(ConfigManager::TELEPORT_SUMMON) ||
+					                                     (summonMonster && summonMonster->isFamiliar());
+					if (getPlayer() && canTeleportPlayerSummon) {
 						summon->setInstanceID(getInstanceID());
 						g_game.internalTeleport(summon.get(), newPos, false, 0, CONST_ME_NONE);
 						g_game.addMagicEffect(newPos, CONST_ME_TELEPORT, summon->getInstanceID());
-					} else {
+					} else if (!getPlayer()) {
 						despawnList.push_front(summon.get());
 					}
 				}
@@ -504,7 +516,9 @@ CreatureVector Creature::getKillers() const
 	for (const auto& it : damageMap) {
 		Creature* attacker = g_game.getCreatureByID(it.first);
 		if (attacker && attacker != this && timeNow - it.second.ticks <= inFightTicks) {
-			killers.push_back(attacker->shared_from_this());
+			if (auto attackerRef = getSharedCreature(attacker)) {
+				killers.push_back(std::move(attackerRef));
+			}
 		}
 	}
 	return killers;
@@ -514,7 +528,10 @@ void Creature::onDeath()
 {
 	bool lastHitUnjustified = false;
 	bool mostDamageUnjustified = false;
-	auto self = shared_from_this();
+	auto self = getSharedCreature(this);
+	if (!self) {
+		return;
+	}
 	auto lastHitCreature = lastAttacker.lock();
 	std::shared_ptr<Creature> lastHitCreatureMaster;
 	if (lastHitCreature) {
@@ -530,7 +547,10 @@ void Creature::onDeath()
 	std::unordered_map<std::shared_ptr<Creature>, uint64_t> experienceMap;
 	for (const auto& it : damageMap) {
 		if (Creature* attackerRaw = g_game.getCreatureByID(it.first)) {
-			auto attacker = attackerRaw->shared_from_this();
+			auto attacker = getSharedCreature(attackerRaw);
+			if (!attacker) {
+				continue;
+			}
 			CountBlock_t cb = it.second;
 			if ((cb.total > mostDamage && (timeNow - cb.ticks <= inFightTicks))) {
 				mostDamage = cb.total;
@@ -754,7 +774,9 @@ void Creature::gainHealth(const std::shared_ptr<Creature>& healer, int32_t healt
 {
 	changeHealth(healthGain);
 	if (healer) {
-		healer->onTargetCreatureGainHealth(shared_from_this(), healthGain);
+		if (auto self = getSharedCreature(this)) {
+			healer->onTargetCreatureGainHealth(self, healthGain);
+		}
 	}
 }
 
@@ -763,7 +785,9 @@ void Creature::drainHealth(const std::shared_ptr<Creature>& attacker, int32_t da
 	changeHealth(-damage, false);
 
 	if (attacker) {
-		attacker->onAttackedCreatureDrainHealth(shared_from_this(), damage);
+		if (auto self = getSharedCreature(this)) {
+			attacker->onAttackedCreatureDrainHealth(self, damage);
+		}
 	} else {
 		lastAttacker.reset();
 	}
@@ -849,7 +873,9 @@ BlockType_t Creature::blockHit(const std::shared_ptr<Creature>& attacker, Combat
 		}
 
 		if (combatType != COMBAT_HEALING) {
-			attacker->onAttackedCreature(shared_from_this());
+			if (auto self = getSharedCreature(this)) {
+				attacker->onAttackedCreature(self);
+			}
 			attacker->onAttackedCreatureBlockHit(blockType);
 			// OPTIMIZATION: Removed per-hit master notification for summons.
 			// onAttackedCreature on master was called every single hit which
@@ -883,7 +909,11 @@ bool Creature::setAttackedCreature(Creature* creature)
 			return false;
 		}
 
-		auto creatureRef = creature->shared_from_this();
+		auto creatureRef = getSharedCreature(creature);
+		if (!creatureRef) {
+			attackedCreature.reset();
+			return false;
+		}
 		attackedCreature = creatureRef;
 		onAttackedCreature(creatureRef);
 		creature->onAttacked();
@@ -981,7 +1011,12 @@ bool Creature::setFollowCreature(Creature* creature)
 
 		hasFollowPath = false;
 		forceUpdateFollowPath = false;
-		followCreature = creature->shared_from_this();
+		auto creatureRef = getSharedCreature(creature);
+		if (!creatureRef) {
+			followCreature.reset();
+			return false;
+		}
+		followCreature = creatureRef;
 		isUpdatingPath = true;
 		updateFollowPath();
 	} else {
@@ -1118,7 +1153,9 @@ void Creature::onAttacked()
 
 void Creature::onAttackedCreatureDrainHealth(const std::shared_ptr<Creature>& target, int32_t points)
 {
-	target->addDamagePoints(shared_from_this(), points);
+	if (auto self = getSharedCreature(this)) {
+		target->addDamagePoints(self, points);
+	}
 }
 
 bool Creature::onKilledCreature(const std::shared_ptr<Creature>& target, bool)
@@ -1205,11 +1242,21 @@ bool Creature::setMaster(Creature* newMaster)
 		                                         auto lockedSummon = summon.lock();
 		                                         return lockedSummon && lockedSummon.get() == this;
 	                                         });
-	if (!alreadySummoned) {
-		newMasterSummons.emplace_back(shared_from_this());
+	auto self = getSharedCreature(this);
+	auto masterRef = getSharedCreature(newMaster);
+	if (!self || !masterRef) {
+		return false;
 	}
 
-	master = newMaster->shared_from_this();
+	if (!alreadySummoned) {
+		newMasterSummons.emplace_back(self);
+	}
+
+	if (getInstanceID() != newMaster->getInstanceID()) {
+		setInstanceID(newMaster->getInstanceID());
+	}
+
+	master = std::move(masterRef);
 	return true;
 }
 

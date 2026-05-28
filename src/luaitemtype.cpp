@@ -7,6 +7,7 @@
 #include "item.h"
 #include "items.h"
 #include "luascript.h"
+#include "tools.h"
 
 namespace {
 using namespace Lua;
@@ -485,10 +486,10 @@ int luaItemTypeGetMantra(lua_State* L)
 {
 	// itemType:getMantra()
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushinteger(L, itemType->mantra);
+	if (itemType && itemType->abilities) {
+		lua_pushinteger(L, itemType->abilities->mantraAbsorbValue[combatTypeToIndex(COMBAT_ENERGYDAMAGE)]);
 	} else {
-		lua_pushnil(L);
+		lua_pushinteger(L, 0);
 	}
 	return 1;
 }

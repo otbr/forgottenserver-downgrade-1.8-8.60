@@ -707,8 +707,8 @@ public:
 	void addSkillAdvance(skills_t skill, uint64_t count, bool artificial = false);
 	void removeSkillTries(skills_t skill, uint64_t count, bool notify = false);
 
-	uint16_t getMantraTotal() const;
-	int16_t getMantraAbsorbPercent(int16_t mantraAbsorbValue) const;
+	int32_t getMantraTotal() const;
+	int16_t getMantraAbsorbPercent(int32_t mantraTotal) const;
 
 	int32_t getArmor() const override;
 	int32_t getDefense() const override;

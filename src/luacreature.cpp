@@ -36,6 +36,46 @@ void closeContainersFromOtherInstances(Player* player, uint32_t instanceId)
 	}
 }
 
+void updateCreatureInstance(const std::shared_ptr<Creature>& creature, uint32_t instanceId, bool refreshWorldView)
+{
+	if (!creature) {
+		return;
+	}
+
+	Creature* creaturePtr = creature.get();
+	closeContainersFromOtherInstances(creaturePtr->getPlayer(), instanceId);
+
+	Tile* tile = creaturePtr->getTile();
+	SpectatorVec oldSpectators;
+	g_game.map.getSpectators(oldSpectators, creaturePtr->getPosition(), true, true);
+	for (const auto& spectator : oldSpectators.players()) {
+		Player* player = static_cast<Player*>(spectator.get());
+		if (tile && player != creaturePtr && player->canSeeCreature(creaturePtr)) {
+			int32_t stackpos = tile->getClientIndexOfCreature(player, creaturePtr);
+			if (stackpos != -1) {
+				player->sendRemoveTileThing(creaturePtr->getPosition(), stackpos);
+			}
+		}
+	}
+
+	creaturePtr->setInstanceID(instanceId);
+
+	SpectatorVec newSpectators;
+	g_game.map.getSpectators(newSpectators, creaturePtr->getPosition(), true, true);
+	for (const auto& spectator : newSpectators.players()) {
+		Player* player = static_cast<Player*>(spectator.get());
+		if (player != creaturePtr && player->canSeeCreature(creaturePtr)) {
+			player->sendCreatureAppear(creaturePtr, creaturePtr->getPosition());
+		}
+	}
+
+	if (refreshWorldView) {
+		if (Player* player = creaturePtr->getPlayer()) {
+			player->refreshWorldView();
+		}
+	}
+}
+
 // Creature
 int luaCreatureCreate(lua_State* L)
 {
@@ -364,7 +404,28 @@ int luaCreatureSetMaster(lua_State* L)
 		return 1;
 	}
 
-	pushBoolean(L, creature->setMaster(getCreature(L, 2)));
+	auto creatureRef = g_game.getCreatureSharedRef(creature);
+	if (!creatureRef) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	Creature* master = getCreature(L, 2);
+	std::shared_ptr<Creature> masterRef;
+	if (master) {
+		masterRef = g_game.getCreatureSharedRef(master);
+		if (!masterRef) {
+			pushBoolean(L, false);
+			return 1;
+		}
+	}
+
+	const bool result = creatureRef->setMaster(masterRef.get());
+	if (result && masterRef && creatureRef->getInstanceID() != masterRef->getInstanceID()) {
+		updateCreatureInstance(creatureRef, masterRef->getInstanceID(), creatureRef->getPlayer() != nullptr);
+	}
+
+	pushBoolean(L, result);
 	return 1;
 }
 
@@ -565,7 +626,15 @@ int luaCreatureSetHealth(lua_State* L)
 		g_game.addCreatureHealth(creature);
 	} else {
 		Creature* attacker = getCreature(L, 3);
-		creature->drainHealth(attacker ? attacker->shared_from_this() : nullptr, creature->getHealth());
+		std::shared_ptr<Creature> attackerRef;
+		if (attacker) {
+			attackerRef = g_game.getCreatureSharedRef(attacker);
+			if (!attackerRef) {
+				pushBoolean(L, false);
+				return 1;
+			}
+		}
+		creature->drainHealth(std::move(attackerRef), creature->getHealth());
 	}
 
 	if (!creature->isDead()) {
@@ -1172,7 +1241,11 @@ int luaCreatureSendCreatureSquare(lua_State* L)
 		}
 
 		for (const auto& spectator : spectators) {
-			static_cast<Player*>(spectator.get())->sendCreatureSquare(creature, getInteger<SquareColor_t>(L, 2));
+			Player* player = spectator ? spectator->getPlayer() : nullptr;
+			if (!player) {
+				continue;
+			}
+			player->sendCreatureSquare(creature, getInteger<SquareColor_t>(L, 2));
 		}
 	} else {
 		lua_pushnil(L);
@@ -1203,35 +1276,13 @@ int luaCreatureSetInstanceId(lua_State *L)
 
 	uint32_t instanceId = getInteger<uint32_t>(L, 2);
 
-	closeContainersFromOtherInstances(creature->getPlayer(), instanceId);
-
-	SpectatorVec oldSpectators;
-	g_game.map.getSpectators(oldSpectators, creature->getPosition(), true, true);
-	for (const auto& spectator : oldSpectators.players()) {
-		Player *p = static_cast<Player*>(spectator.get());
-		if (p != creature && p->canSeeCreature(creature)) {
-			int32_t stackpos = creature->getTile()->getClientIndexOfCreature(p, creature);
-			if (stackpos != -1) {
-				p->sendRemoveTileThing(creature->getPosition(), stackpos);
-			}
-		}
+	auto creatureRef = g_game.getCreatureSharedRef(creature);
+	if (!creatureRef) {
+		pushBoolean(L, false);
+		return 1;
 	}
 
-	creature->setInstanceID(instanceId);
-
-	SpectatorVec newSpectators;
-	g_game.map.getSpectators(newSpectators, creature->getPosition(), true, true);
-	for (const auto& spectator : newSpectators.players()) {
-		Player *p = static_cast<Player*>(spectator.get());
-		if (p != creature && p->canSeeCreature(creature)) {
-			p->sendCreatureAppear(creature, creature->getPosition());
-		}
-	}
-
-	if (Player *player = creature->getPlayer()) {
-		player->refreshWorldView();
-	}
-
+	updateCreatureInstance(creatureRef, instanceId, true);
 	lua_pushboolean(L, true);
 	return 1;
 }
@@ -1249,31 +1300,13 @@ int luaCreatureSetInstanceIdRaw(lua_State *L)
 
 	uint32_t instanceId = getInteger<uint32_t>(L, 2);
 
-	closeContainersFromOtherInstances(creature->getPlayer(), instanceId);
-
-	SpectatorVec oldSpectators;
-	g_game.map.getSpectators(oldSpectators, creature->getPosition(), true, true);
-	for (const auto& spectator : oldSpectators.players()) {
-		Player *p = static_cast<Player*>(spectator.get());
-		if (p != creature && p->canSeeCreature(creature)) {
-			int32_t stackpos = creature->getTile()->getClientIndexOfCreature(p, creature);
-			if (stackpos != -1) {
-				p->sendRemoveTileThing(creature->getPosition(), stackpos);
-			}
-		}
+	auto creatureRef = g_game.getCreatureSharedRef(creature);
+	if (!creatureRef) {
+		pushBoolean(L, false);
+		return 1;
 	}
 
-	creature->setInstanceID(instanceId);
-
-	SpectatorVec newSpectators;
-	g_game.map.getSpectators(newSpectators, creature->getPosition(), true, true);
-	for (const auto& spectator : newSpectators.players()) {
-		Player *p = static_cast<Player*>(spectator.get());
-		if (p != creature && p->canSeeCreature(creature)) {
-			p->sendCreatureAppear(creature, creature->getPosition());
-		}
-	}
-
+	updateCreatureInstance(creatureRef, instanceId, false);
 	// NO refreshWorldView here — caller is responsible (typically via teleportTo).
 
 	lua_pushboolean(L, true);

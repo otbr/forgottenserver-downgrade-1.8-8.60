@@ -651,10 +651,14 @@ float Player::getMitigation() const
 	getShieldAndWeapon(shield, weapon);
 
 	if (shield) {
-		return (shieldingSkill * vocation->primaryShieldMultiplier + armor * vocation->mitigationMultiplier) / 100.0f;
+		return std::max(0.0f,
+		                ((shieldingSkill * vocation->primaryShieldMultiplier + armor * vocation->mitigationMultiplier) / 100.0f) +
+		                    varMitigation);
 	}
 
-	return (shieldingSkill * vocation->secondaryShieldMultiplier + armor * vocation->mitigationMultiplier) / 100.0f;
+	return std::max(0.0f,
+	                ((shieldingSkill * vocation->secondaryShieldMultiplier + armor * vocation->mitigationMultiplier) / 100.0f) +
+	                    varMitigation);
 }
 
 void Player::getShieldAndWeapon(const Item*& shield, const Item*& weapon) const
@@ -2057,8 +2061,7 @@ void Player::onCreatureMove(Creature* creature, const Tile* newTile, const Posit
 
 	auto follow = followCreature.lock();
 	if (hasFollowPath && (creature == follow.get() || (creature == this && follow))) {
-		isUpdatingPath = false;
-		updateFollowPath();
+		requestFollowPathUpdate();
 	}
 
 	if (creature != this) {
@@ -6200,18 +6203,18 @@ void Player::flushPendingLoot(const std::string& groupKey)
 
 	bool first = true;
 	for (auto& [itemId, count] : group->items) {
-		const ItemType& it = Item::items[itemId];
+		const ItemType& itemType = Item::items[itemId];
 		if (!first) {
 			ss << ", ";
 		}
 		first = false;
 		if (count > 1) {
-			ss << count << " " << it.getPluralName();
+			ss << count << " " << itemType.getPluralName();
 		} else {
-			if (it.article.empty() || Item::items[itemId].stackable) {
-				ss << "1 " << it.name;
+			if (itemType.article.empty() || itemType.stackable) {
+				ss << "1 " << itemType.name;
 			} else {
-				ss << it.article << " " << it.name;
+				ss << itemType.article << " " << itemType.name;
 			}
 		}
 	}

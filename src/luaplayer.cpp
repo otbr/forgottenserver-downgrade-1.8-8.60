@@ -42,6 +42,23 @@ bool luaPlayerIsDisabledMonkVocation(const Player* player)
 	       luaPlayerIsMonkVocationId(player->getVocationId());
 }
 
+int32_t getWheelRevelationStage(const Player& player, const std::string& spellName)
+{
+	auto wheelKV = KVStore::getInstance().scoped("player")->scoped(fmt::format("{}", player.getGUID()))->scoped("wheel");
+	const auto stagesValue = wheelKV->get("revelationStages");
+	if (!stagesValue) {
+		return 0;
+	}
+
+	const auto stages = stagesValue->get<MapType>();
+	const auto it = stages.find(spellName);
+	if (it == stages.end() || !it->second) {
+		return 0;
+	}
+
+	return std::clamp(static_cast<int32_t>(it->second->getNumber()), 0, 3);
+}
+
 bool luaPlayerIsFamiliarSpell(std::string_view name)
 {
 	return name.find("Familiar") != std::string_view::npos || name.find("familiar") != std::string_view::npos;
@@ -768,6 +785,60 @@ int luaPlayerAddSpecialSkill(lua_State* L)
 
 	player->setVarSpecialSkill(specialSkillType, getInteger<int32_t>(L, 3));
 	player->sendSkills();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int luaPlayerGetSpecialMagicLevel(lua_State* L)
+{
+	// player:getSpecialMagicLevel(combatType)
+	CombatType_t combatType = getInteger<CombatType_t>(L, 2);
+	const Player* player = getUserdata<const Player>(L, 1);
+	if (player) {
+		lua_pushinteger(L, player->getSpecialMagicLevel(combatType));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int luaPlayerAddSpecialMagicLevel(lua_State* L)
+{
+	// player:addSpecialMagicLevel(combatType, value)
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->setSpecialMagicLevelSkill(getInteger<CombatType_t>(L, 2), getInteger<int16_t>(L, 3));
+	player->sendSkills();
+	pushBoolean(L, true);
+	return 1;
+}
+
+int luaPlayerGetMitigation(lua_State* L)
+{
+	// player:getMitigation()
+	const Player* player = getUserdata<const Player>(L, 1);
+	if (player) {
+		lua_pushnumber(L, player->getMitigation());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int luaPlayerAddMitigation(lua_State* L)
+{
+	// player:addMitigation(value)
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->addMitigation(getNumber<float>(L, 2));
 	pushBoolean(L, true);
 	return 1;
 }
@@ -3341,15 +3412,17 @@ int luaPlayerRevelationStageWOD(lua_State* L)
 		return 1;
 	}
 
-	if (lua_gettop(L) >= 2) {
-		if (lua_gettop(L) == 2) {
-			lua_pushnumber(L, 1);
-		} else {
-			pushBoolean(L, true);
-		}
-	} else {
+	if (lua_gettop(L) < 2) {
 		pushBoolean(L, true);
+		return 1;
 	}
+
+	if (lua_gettop(L) >= 3) {
+		pushBoolean(L, true);
+		return 1;
+	}
+
+	lua_pushinteger(L, getWheelRevelationStage(*player, getString(L, 2)));
 	return 1;
 }
 
@@ -3854,6 +3927,10 @@ void LuaScriptInterface::registerPlayer()
 	registerMethod("Player", "removeSkillTries", luaPlayerRemoveSkillTries);
 	registerMethod("Player", "getSpecialSkill", luaPlayerGetSpecialSkill);
 	registerMethod("Player", "addSpecialSkill", luaPlayerAddSpecialSkill);
+	registerMethod("Player", "getSpecialMagicLevel", luaPlayerGetSpecialMagicLevel);
+	registerMethod("Player", "addSpecialMagicLevel", luaPlayerAddSpecialMagicLevel);
+	registerMethod("Player", "getMitigation", luaPlayerGetMitigation);
+	registerMethod("Player", "addMitigation", luaPlayerAddMitigation);
 
 	registerMethod("Player", "getItemCount", luaPlayerGetItemCount);
 	registerMethod("Player", "getItemById", luaPlayerGetItemById);
@@ -4125,7 +4202,7 @@ int luaPlayerKV(lua_State* L) {
 	}
 
 	auto scoped = KVStore::getInstance().scoped("player")->scoped(fmt::format("{}", player->getGUID()));
-	Lua::pushSharedPtr(L, scoped);
+	LuaScriptInterface::pushSharedPtrCopy(L, scoped);
 	Lua::setMetatable(L, -1, "KV");
 	return 1;
 }

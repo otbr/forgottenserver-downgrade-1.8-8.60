@@ -545,7 +545,8 @@ Store Inbox compatibility:
 
 Extended sprites:
 
-- [Otcv8--Classic-8.6](https://github.com/Mateuzkl/Otcv8--Classic-8.6)
+- [Otcv8--Classic-8.6 (CIP 8.60 Appearance)](https://github.com/Mateuzkl/Otcv8--Classic-8.6)
+- [Astra Client (CIP 15.x Appearance)](https://github.com/Mateuzkl/AstraClient)
 - [OTC-Fonticak (Fork Mehah)](https://github.com/soyfabi/OTC-Fonticak)
 - Extract `.spr` and `.dat` to your OTC directory.
 

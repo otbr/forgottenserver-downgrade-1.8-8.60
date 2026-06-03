@@ -300,6 +300,54 @@ int luaItemGetWorth(lua_State* L)
 	return 1;
 }
 
+int luaItemGetBuyPrice(lua_State* L)
+{
+	// item:getBuyPrice()
+	const Item* item = getItemUserdata<const Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const ItemType& itemType = Item::items[item->getID()];
+	lua_pushinteger(L, itemType.buyPrice);
+	return 1;
+}
+
+int luaItemGetSellPrice(lua_State* L)
+{
+	// item:getSellPrice()
+	const Item* item = getItemUserdata<const Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const ItemType& itemType = Item::items[item->getID()];
+	lua_pushinteger(L, itemType.sellPrice);
+	return 1;
+}
+
+int luaItemGetDefaultPrice(lua_State* L)
+{
+	// item:getDefaultPrice()
+	const Item* item = getItemUserdata<const Item>(L, 1);
+	if (!item) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const ItemType& itemType = Item::items[item->getID()];
+	if (itemType.sellPrice > 0) {
+		lua_pushinteger(L, itemType.sellPrice);
+	} else if (itemType.buyPrice > 0) {
+		lua_pushinteger(L, itemType.buyPrice);
+	} else {
+		lua_pushinteger(L, itemType.worth);
+	}
+	return 1;
+}
+
 int luaItemGetSubType(lua_State* L)
 {
 	// item:getSubType()
@@ -1059,8 +1107,12 @@ int LuaScriptInterface::luaItemSetTier(lua_State *L)
 			pushBoolean(L, false);
 			return 1;
 		}
+		if (!lua_isnumber(L, 2)) {
+			pushBoolean(L, false);
+			return 1;
+		}
 
-		item->setTier(getInteger<uint8_t>(L, 2));
+		item->setTier(static_cast<uint8_t>(std::clamp<int32_t>(getInteger<int32_t>(L, 2), 0, 10)));
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
@@ -1192,6 +1244,10 @@ void LuaScriptInterface::registerItem()
 	registerMethod("Item", "getWeight", luaItemGetWeight);
 	registerMethod("Item", "getWeightDescription", luaItemGetWeightDescription);
 	registerMethod("Item", "getWorth", luaItemGetWorth);
+	registerMethod("Item", "getBuyPrice", luaItemGetBuyPrice);
+	registerMethod("Item", "getSellPrice", luaItemGetSellPrice);
+	registerMethod("Item", "getDefaultPrice", luaItemGetDefaultPrice);
+	registerMethod("Item", "getDefaultValue", luaItemGetDefaultPrice);
 
 	registerMethod("Item", "getSubType", luaItemGetSubType);
 

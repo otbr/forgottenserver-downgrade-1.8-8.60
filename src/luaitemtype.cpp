@@ -385,6 +385,93 @@ int luaItemTypeGetWorth(lua_State* L)
 	return 1;
 }
 
+int luaItemTypeGetBuyPrice(lua_State* L)
+{
+	// itemType:getBuyPrice()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (!itemType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, itemType->buyPrice);
+	return 1;
+}
+
+int luaItemTypeGetSellPrice(lua_State* L)
+{
+	// itemType:getSellPrice()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (!itemType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, itemType->sellPrice);
+	return 1;
+}
+
+int luaItemTypeGetDefaultPrice(lua_State* L)
+{
+	// itemType:getDefaultPrice()
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (!itemType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (itemType->sellPrice > 0) {
+		lua_pushinteger(L, itemType->sellPrice);
+	} else if (itemType->buyPrice > 0) {
+		lua_pushinteger(L, itemType->buyPrice);
+	} else {
+		lua_pushinteger(L, itemType->worth);
+	}
+	return 1;
+}
+
+int luaItemTypeSetBuyPrice(lua_State* L)
+{
+	// itemType:setBuyPrice(price)
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (!itemType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	ItemType& mutableItemType = Item::items.getItemType(itemType->id);
+	const int64_t price = getInteger<int64_t>(L, 2, 0);
+	if (price > 0) {
+		const uint32_t safePrice = price > static_cast<int64_t>(std::numeric_limits<uint32_t>::max())
+		                         ? std::numeric_limits<uint32_t>::max()
+		                         : static_cast<uint32_t>(price);
+		mutableItemType.buyPrice = std::max(mutableItemType.buyPrice, safePrice);
+	}
+	pushBoolean(L, true);
+	return 1;
+}
+
+int luaItemTypeSetSellPrice(lua_State* L)
+{
+	// itemType:setSellPrice(price)
+	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
+	if (!itemType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	ItemType& mutableItemType = Item::items.getItemType(itemType->id);
+	const int64_t price = getInteger<int64_t>(L, 2, 0);
+	if (price > 0) {
+		const uint32_t safePrice = price > static_cast<int64_t>(std::numeric_limits<uint32_t>::max())
+		                         ? std::numeric_limits<uint32_t>::max()
+		                         : static_cast<uint32_t>(price);
+		mutableItemType.sellPrice = std::max(mutableItemType.sellPrice, safePrice);
+	}
+	pushBoolean(L, true);
+	return 1;
+}
+
 int luaItemTypeGetStackSize(lua_State* L)
 {
 	// itemType:getStackSize()
@@ -1100,6 +1187,12 @@ void LuaScriptInterface::registerItemType()
 	registerMethod("ItemType", "getCapacity", luaItemTypeGetCapacity);
 	registerMethod("ItemType", "getWeight", luaItemTypeGetWeight);
 	registerMethod("ItemType", "getWorth", luaItemTypeGetWorth);
+	registerMethod("ItemType", "getBuyPrice", luaItemTypeGetBuyPrice);
+	registerMethod("ItemType", "getSellPrice", luaItemTypeGetSellPrice);
+	registerMethod("ItemType", "getDefaultPrice", luaItemTypeGetDefaultPrice);
+	registerMethod("ItemType", "getDefaultValue", luaItemTypeGetDefaultPrice);
+	registerMethod("ItemType", "setBuyPrice", luaItemTypeSetBuyPrice);
+	registerMethod("ItemType", "setSellPrice", luaItemTypeSetSellPrice);
 	registerMethod("ItemType", "getStackSize", luaItemTypeGetStackSize);
 
 	registerMethod("ItemType", "getHitChance", luaItemTypeGetHitChance);

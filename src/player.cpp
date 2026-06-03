@@ -6454,12 +6454,17 @@ void Player::flushPendingLoot(const std::string& groupKey)
 	}
 
 	bool first = true;
+	const bool colorizedLootValue = ConfigManager::getBoolean(ConfigManager::COLORIZED_LOOT_VALUE);
 	for (auto& [itemId, count] : group->items) {
 		const ItemType& itemType = Item::items[itemId];
 		if (!first) {
 			ss << ", ";
 		}
 		first = false;
+		if (colorizedLootValue) {
+			const uint64_t itemValue = static_cast<uint64_t>(itemType.sellPrice > 0 ? itemType.sellPrice : itemType.buyPrice) * count;
+			ss << "{" << itemId << ":" << itemValue << "|";
+		}
 		if (count > 1) {
 			ss << count << " " << itemType.getPluralName();
 		} else {
@@ -6468,6 +6473,9 @@ void Player::flushPendingLoot(const std::string& groupKey)
 			} else {
 				ss << itemType.article << " " << itemType.name;
 			}
+		}
+		if (colorizedLootValue) {
+			ss << "}";
 		}
 	}
 	ss << ".";

@@ -564,6 +564,30 @@ if Modules == nil then
     -- Add it to the parseable module list.
     Modules.parseableModules["module_shop"] = ShopModule
 
+    local function registerItemShopPrice(itemId, buy, sell)
+        local itemType = ItemType(itemId)
+        if not itemType or itemType:getId() == 0 or not itemType.setBuyPrice then
+            return
+        end
+
+        buy = tonumber(buy) or 0
+        sell = tonumber(sell) or 0
+
+        -- Merge by max to prevent last-loaded NPC from overwriting higher prices
+        if buy > 0 then
+            local currentBuy = itemType.getBuyPrice and itemType:getBuyPrice() or 0
+            itemType:setBuyPrice(math.max(currentBuy, buy))
+        end
+        if sell > 0 then
+            local currentSell = itemType.getSellPrice and itemType:getSellPrice() or 0
+            itemType:setSellPrice(math.max(currentSell, sell))
+        end
+        if ItemPriceRegistry and ItemPriceRegistry.register then
+            local npc = Npc()
+            ItemPriceRegistry.register(itemId, buy, sell, npc and npc:getName() or "NPC")
+        end
+    end
+
     -- Creates a new instance of ShopModule
     function ShopModule:new()
         local obj = {}
@@ -860,6 +884,7 @@ if Modules == nil then
             if itemSubType == nil then itemSubType = 1 end
             local it = ItemType(itemid)
             if it:getId() ~= 0 then
+                registerItemShopPrice(itemid, cost, 0)
                 local shopItem = self:getShopItem(itemid, itemSubType)
                 if shopItem == nil then
                     self.npcHandler.shopItems[#self.npcHandler.shopItems + 1] =
@@ -940,6 +965,7 @@ if Modules == nil then
     --	realName - The real, full name for the item. Will be used as ITEMNAME in MESSAGE_ONBUY and MESSAGE_ONSELL if defined. Default value is nil (ItemType(itemId):getName() will be used)
     function ShopModule:addBuyableItemContainer(names, container, itemid, cost,
                                                 subType, realName)
+        registerItemShopPrice(itemid, cost, 0)
         if names then
             for i, name in pairs(names) do
                 local parameters = {
@@ -975,6 +1001,7 @@ if Modules == nil then
             if itemSubType == nil then itemSubType = 0 end
             local it = ItemType(itemid)
             if it:getId() ~= 0 then
+                registerItemShopPrice(itemid, 0, cost)
                 local shopItem = self:getShopItem(itemid, itemSubType)
                 if shopItem == nil then
                     self.npcHandler.shopItems[#self.npcHandler.shopItems + 1] =

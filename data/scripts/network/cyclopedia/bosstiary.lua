@@ -13,7 +13,7 @@ local MAX_TRACKER_SLOTS = 5
 local SLOT_TWO_POINTS = 1500
 
 local function supportsCustomNetwork(player)
-	return player and player.isUsingOtClient and player:isUsingOtClient()
+	return player and player.isUsingAstraClient and player:isUsingAstraClient()
 end
 
 local function clamp(value, minValue, maxValue)
@@ -104,6 +104,16 @@ local function writeCreatureInfo(out, entry)
 	out:addByte(clamp(outfit.legs or 0, 0, 0xFF))
 	out:addByte(clamp(outfit.feet or 0, 0, 0xFF))
 	out:addByte(clamp(outfit.addons or 0, 0, 0xFF))
+end
+
+local function writeOptionalCreatureInfo(out, entry)
+	if not entry then
+		out:addByte(0)
+		return
+	end
+
+	out:addByte(1)
+	writeCreatureInfo(out, entry)
 end
 
 local function sendBaseData(player)
@@ -209,6 +219,7 @@ local function sendSlots(player)
 		local bonus = currentBonus + (CustomBosstiary.getProgress(slotOneEntry, kills[state.slotOne] or 0) >= 3 and 25 or 0)
 		sendSlotBytes(out, slotOneEntry, kills[state.slotOne] or 0, bonus, 0, false, removePrice)
 	end
+	writeOptionalCreatureInfo(out, slotOneUnlocked and state.slotOne > 0 and slotOneEntry or nil)
 
 	local slotTwoEntry = CustomBosstiary.getMonster(state.slotTwo)
 	if state.slotTwo > 0 and not slotTwoEntry then
@@ -222,6 +233,7 @@ local function sendSlots(player)
 		local bonus = currentBonus + (CustomBosstiary.getProgress(slotTwoEntry, kills[state.slotTwo] or 0) >= 3 and 25 or 0)
 		sendSlotBytes(out, slotTwoEntry, kills[state.slotTwo] or 0, bonus, 0, false, removePrice)
 	end
+	writeOptionalCreatureInfo(out, slotTwoUnlocked and state.slotTwo > 0 and slotTwoEntry or nil)
 
 	local boostedBoss = getBoostedBoss()
 	out:addByte(boostedBoss and 1 or 0)
@@ -229,6 +241,7 @@ local function sendSlots(player)
 	if boostedBoss then
 		sendSlotBytes(out, boostedBoss, kills[boostedBoss.raceId] or 0, currentBonus + 50, 2, false, 0)
 	end
+	writeOptionalCreatureInfo(out, boostedBoss)
 
 	local selectable = {}
 	for _, raceId in ipairs(finished) do

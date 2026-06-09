@@ -1711,6 +1711,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITION_FREEZING);
 	registerEnum(CONDITION_DAZZLED);
 	registerEnum(CONDITION_CURSED);
+	registerEnum(CONDITION_ROOTED);
+	registerEnum(CONDITION_FEARED);
+	registerEnum(CONDITION_AGONY);
 	registerEnum(CONDITION_EXHAUST_COMBAT);
 	registerEnum(CONDITION_EXHAUST_HEAL);
 	registerEnum(CONDITION_PACIFIED);

@@ -1680,6 +1680,10 @@ uint32_t ConditionDamage::getIcons() const
 			icons |= ICON_BLEEDING;
 			break;
 
+		case CONDITION_AGONY:
+			icons |= static_cast<uint32_t>(PlayerIcon_Agony);
+			break;
+
 		default:
 			break;
 	}
@@ -1890,6 +1894,13 @@ void ConditionRooted::endCondition(Creature* creature)
 	}
 }
 
+uint32_t ConditionRooted::getIcons() const
+{
+	uint32_t icons = Condition::getIcons();
+	icons |= static_cast<uint32_t>(PlayerIcon_Rooted);
+	return icons;
+}
+
 bool ConditionFeared::startCondition(Creature* creature)
 {
 	if (!Condition::startCondition(creature)) {
@@ -1938,6 +1949,13 @@ void ConditionFeared::addCondition(Creature*, const Condition* condition)
 	if (updateCondition(condition)) {
 		setTicks(condition->getTicks());
 	}
+}
+
+uint32_t ConditionFeared::getIcons() const
+{
+	uint32_t icons = Condition::getIcons();
+	icons |= static_cast<uint32_t>(PlayerIcon_Feared);
+	return icons;
 }
 
 bool ConditionFeared::setPositionParam(ConditionParam_t param, const Position& pos)

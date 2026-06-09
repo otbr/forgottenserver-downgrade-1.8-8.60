@@ -368,6 +368,7 @@ public:
 	bool executeCondition(Creature* creature, int32_t interval) override;
 	void endCondition(Creature* creature) override;
 	void addCondition(Creature* creature, const Condition* condition) override;
+	uint32_t getIcons() const override;
 
 	Condition_ptr clone() const override { return std::make_unique<ConditionRooted>(*this); }
 };
@@ -385,6 +386,7 @@ public:
 	void endCondition(Creature* creature) override;
 	void addCondition(Creature* creature, const Condition* condition) override;
 	bool setPositionParam(ConditionParam_t param, const Position& pos) override;
+	uint32_t getIcons() const override;
 
 	Condition_ptr clone() const override { return std::make_unique<ConditionFeared>(*this); }
 

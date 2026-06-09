@@ -1183,7 +1183,11 @@ public:
 		if (!client) {
 			return;
 		}
-		client->sendIcons(getClientIcons());
+		if (client->supportsAstraCreatureIcons()) {
+			client->sendIcons(getClientIcons64(), getBakragoreIcon());
+		} else {
+			client->sendIcons(getClientIcons());
+		}
 	}
 	void sendMagicEffect(const Position& pos, uint16_t type) const
 	{

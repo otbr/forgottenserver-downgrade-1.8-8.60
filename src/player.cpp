@@ -1192,7 +1192,11 @@ void Player::sendIcons() const
 	}
 	client->sendIcons(getClientIcons());
 
-	// Send extended 64-bit state icons for AstraClient
+	// Send extended 64-bit condition icons for AstraClient ONLY
+	if (!client->isAstraClient) {
+		return;
+	}
+
 	uint64_t highIcons = getClientIcons64() & ~0xFFFFULL;
 	if (highIcons != 0) {
 		client->sendExtendedOpcode(0x8C, std::string(reinterpret_cast<const char*>(&highIcons), sizeof(highIcons)));

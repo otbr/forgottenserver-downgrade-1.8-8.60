@@ -56,12 +56,13 @@ function talk.onSay(player, words, param)
 	end
 
 	local ticks = seconds * 1000
-	local condition = Condition(CONDITIONID_DEFAULT, conditionType, ticks)
+	local condition = Condition(conditionType, CONDITIONID_DEFAULT)
 	if not condition then
 		player:sendTextMessage(MESSAGE_ADMIN, "Failed to create condition!")
 		return false
 	end
 
+	condition:setParameter(CONDITION_PARAM_TICKS, ticks)
 	local ok = target:addCondition(condition)
 	player:sendTextMessage(MESSAGE_ADMIN, string.format("Applied %s to %s for %ds", condName, target:getName(), seconds))
 	return false
